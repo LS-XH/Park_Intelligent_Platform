@@ -21,4 +21,9 @@ class RigidBody:
         pass
 
     @property
+    @abstractmethod
+    def simulate(self,dt:float=0,a_x:float=0,a_y:float=0):
+        pass
+
+
 

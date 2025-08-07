@@ -1,3 +1,4 @@
+import json
 from abc import abstractmethod
 import numpy as np
 from enum import Enum
@@ -24,6 +25,7 @@ class Point:
 
 
 
+
 class Edge:
     def __init__(self,start_id:str,end_id:str,length:float,degree:int):
         self.start = start_id
@@ -44,8 +46,31 @@ class Edge:
 class GraphBase:
     def __init__(self):
         self.__points=[]
+        self.__points_id={}
         self.__edges=[]
 
+    @abstractmethod
+    def initialize_car(self):
+        """
+        初始化车的位置
+        :return:
+        """
+        pass
+    @abstractmethod
+    def initialize_crowd(self):
+        """
+        初始化人的位置
+        :return:
+        """
+
+    @property
+    @abstractmethod
+    def nodes_position(self)->np.matrix:
+        """
+        节点矩阵，行为序号，列0为x，列1为y
+        :return: dim=2
+        """
+        pass
 
     @property
     @abstractmethod
@@ -56,14 +81,6 @@ class GraphBase:
         """
         pass
 
-    @property
-    @abstractmethod
-    def nodes(self)->np.matrix:
-        """
-        节点矩阵，行为序号，列0为x，列1为y
-        :return: dim=2
-        """
-        pass
 
     @property
     @abstractmethod
@@ -88,8 +105,27 @@ class GraphBase:
     def limit_speed(self)->np.matrix:
         pass
 
+    @property
+    @abstractmethod
+    def traffic_light(self)->np.matrix:
+        pass
+
+    @property
+    @abstractmethod
+    def get_light(self,start_id:str="",end_id:str="")->float:
+        """
+        获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
+        :param start_id: 起始点的名称id
+        :param end_id: 末端点（路口）的名称id
+        :return:
+        """
+        pass
+        # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
+
+
     def add_point(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
         self.__points.append(Point(id,x,y,type=type))
+        self.__points_id[id]=len(self.__points_id)
         return True
 
     def add_edge(self,start_id:str,end_id:str,length:float,degree:int):
@@ -97,6 +133,12 @@ class GraphBase:
             raise Exception("")
 
         self.__edges.append(Edge(start_id,end_id,length,degree))
+
+    def load_json(self,path:str):
+        with open(path,'r') as f:
+            data=json.load(f)
+
+
 
 
 

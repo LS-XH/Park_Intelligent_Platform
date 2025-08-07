@@ -3,4 +3,9 @@ from abc import abstractmethod
 
 class PersonBase:
     @abstractmethod
-    def 
+    def simulate(self,dt:float=0):
+        """
+        模拟一帧，获取人的属性
+        :return:
+        """
+        pass
