@@ -46,6 +46,7 @@ class Edge:
     @property
     def degree(self)->float:
         return self.__degree
+
     @property
     def start_id(self)->str:
         return self.start
@@ -142,6 +143,14 @@ class GraphBase:
         pass
         # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
 
+    @abstractmethod
+    def _simulate_light(self,dt=0.1):
+        pass
+
+    @abstractmethod
+    def simulate(self,dt=0.1):
+        self._simulate_light(dt=dt)
+        pass
 
     def add_point(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
         self.__points.append(Point(id,x,y,type=type))
