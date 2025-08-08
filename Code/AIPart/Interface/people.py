@@ -4,10 +4,10 @@ from abc import abstractmethod
 class PersonBase:
 
     @abstractmethod
-    def __init__(self, total_number:int, graph:any, *kwargs):
+    def __init__(self, position:list, graph:any, *kwargs):
         """
 
-        :param total_number: 总人数
+        :param position: [(x,y), (x,y), ]
         :param graph: 地图
         :param kwargs:
         """
@@ -16,35 +16,26 @@ class PersonBase:
     @abstractmethod
     def simulate(self, happened:list=None):
         """
-        模拟一帧，获取人的属性
-        :param happened:[{"position", "type"}, ...]
+        模拟一帧
+        :param happened:[((x, y), accident:str), ...]
         """
         pass
 
     @property
     @abstractmethod
-    def position(self)->dict:
+    def position(self)->list:
         """
         all position
-        :return: dict{id: (x, y), id: (x, y), ...} in all
+        :return: [(x, y), (x, y), ...] in all
         """
         pass
 
     @abstractmethod
-    def get_pos(self, node_id:int, ranges:int=20)->dict:
+    def get_pos(self, node_id:int, ranges:int=30)->list:
         """
         获取节点周围的人
         :param node_id:
         :param ranges:
-        :return: dict{id: (x, y), id: (x, y), ...} in range
-        """
-        pass
-
-    @abstractmethod
-    def kill(self, node_id:int, ranges:int=20):
-        """
-        remove people in range
-        :param node_id:
-        :param ranges:
+        :return: [(x, y), (x, y), ...] in range
         """
         pass
