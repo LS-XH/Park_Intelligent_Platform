@@ -1,0 +1,23 @@
+{
+  "points": [
+    {"id":"陆路","x":44,"y":52,"type":0},
+    {"id":"小路","x":1164,"y":52,"type":0},
+    {"id":"凤路","x":2200,"y":220,"type":0},
+    {"id":"希路","x":44,"y":612,"type":0},
+    {"id":"文路","x":1164,"y":612,"type":0},
+    {"id":"锐路","x":2200,"y":612,"type":0},
+    {"id":"争路","x":1164,"y":1284,"type":0},
+    {"id":"英路","x":2200,"y":984,"type":0}
+  ],
+
+  "edges": [
+    {"start_id": "陆路", "end_id": "小路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "小路", "end_id": "凤路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "小路", "end_id": "文路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "文路", "end_id": "希路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "文路", "end_id": "锐路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "文路", "end_id": "争路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "凤路", "end_id": "锐路", "degree": 3, "limit_speed": 6.94},
+    {"start_id": "锐路", "end_id": "英路", "degree": 3, "limit_speed": 6.94}
+  ]
+}

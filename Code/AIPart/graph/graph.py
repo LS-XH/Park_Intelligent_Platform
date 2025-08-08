@@ -1,76 +1,21 @@
-import json
-from abc import abstractmethod
-import numpy as np
-from enum import Enum
+from Interface import GraphBase
 import math
+import numpy as np
+import json
 
-class PointType(Enum):
-    crossing=0
-    station=1
-
-
-class Point:
-    def __init__(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
-        self.__id=id
-        self.__x=x
-        self.__y=y
-        self.__type=type
-    @property
-    def type(self)->PointType:
-        # 返回点的类型
-        return self.__type
-
-    @property
-    def id(self)->str:
-        # 返回点的id
-        return self.__id
-
-    @property
-    def x(self)->float:
-        return self.__x
-    @property
-    def y(self)->float:
-        return self.__y
-
-class Edge:
-    def __init__(self,start_id:str,end_id:str,length:float,degree:int,limit_speed:float):
-        self.start = start_id
-        self.end = end_id
-        self.__length = length
-        self.__degree = degree
-        self.__limit_speed = limit_speed
-
-    @property
-    def length(self)->float:
-        return self.__length
-    @property
-    def degree(self)->float:
-        return self.__degree
-
-    @property
-    def start_id(self)->str:
-        return self.start
-    @property
-    def end_id(self)->str:
-        return self.end
-    @property
-    def limit_speed(self)->float:
-        return self.__limit_speed
-
-class GraphBase:
+class Graph(GraphBase):
     def __init__(self):
         self.__points=[]
         self.__points_id={}
         self.__edges=[]
 
-    @abstractmethod
     def initialize_car(self):
         """
         初始化车的位置
         :return:
         """
         pass
-    @abstractmethod
+
     def initialize_crowd(self):
         """
         初始化人的位置
@@ -79,26 +24,27 @@ class GraphBase:
         pass
 
 
-    @property
-    @abstractmethod
     def nodes_position(self)->np.matrix:
         """
         节点矩阵，行为序号，列0为x，列1为y
         :return: dim=2
         """
-        pass
+        positions=[[p.x,p.y] for p in self.__points]
+        return np.matrix(positions)
 
-    @property
-    @abstractmethod
     def length(self)->np.matrix:
         """
         道路长度邻接矩阵
         :return: dim=2
         """
-        pass
+        n=len(self.__points)
+        length_mat=np.zeros((n,n))
+        for edge in self.__edges:
+            i=self.__points_id[edge.start_id]
+            j=self.__points_id[edge.end_id]
+            length_mat[i,j]=edge.length
+        return np.matrix(length_mat)
 
-    @property
-    @abstractmethod
     def weight(self)->np.matrix:
         """
         权重邻接矩阵
@@ -106,8 +52,6 @@ class GraphBase:
         """
         pass
 
-    @property
-    @abstractmethod
     def degree(self)->np.matrix:
         """
         道路数量和方向的度矩阵
@@ -115,8 +59,6 @@ class GraphBase:
         """
         pass
 
-    @property
-    @abstractmethod
     def limit_speed(self)->np.matrix:
         n=len(self.__points)
         speed_mat=np.zeros((n,n))
@@ -126,13 +68,10 @@ class GraphBase:
             speed_mat[i, j]=edge.limit_speed
         return np.matrix(speed_mat)
 
-    @property
-    @abstractmethod
+
     def traffic_light(self)->np.matrix:
         pass
 
-    @property
-    @abstractmethod
     def get_light(self,start_id:str="",end_id:str="")->float:
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
@@ -143,14 +82,6 @@ class GraphBase:
         pass
         # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
 
-    @abstractmethod
-    def _simulate_light(self,dt=0.1):
-        pass
-
-    @abstractmethod
-    def simulate(self,dt=0.1):
-        self._simulate_light(dt=dt)
-        pass
 
     def add_point(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
         self.__points.append(Point(id,x,y,type=type))
@@ -166,3 +97,22 @@ class GraphBase:
     def load_json(self,path:str):
         with open(path,'r') as f:
             data=json.load(f)
+        for point_data in data['points']:
+            id=str(point_data['id'])
+            x=float(point_data['x'])
+            y=float(point_data['y'])
+            type=point_data['type']
+            self.add_point(id,x,y,type=type)
+
+        for edge_data in data['edges']:
+            start_id=str(edge_data['start_id'])
+            end_id=str(edge_data['end_id'])
+            degree=int(edge_data['degree'])
+            limit_speed=float(edge_data["limit_speed"])
+            start_point=self.__points[self.__points_id[start_id]]
+            end_point=self.__points[self.__points_id[end_id]]
+            length=math.sqrt(
+                (end_point.x-start_point.x)**2+
+                (end_point.y-start_point.y)**2
+            )
+            self.add_edge(start_id,end_id,length,degree,limit_speed)
