@@ -8,15 +8,14 @@
 
 import asyncio
 import json
-import logging
 import os
-import socket
 import sys
 from functools import wraps
 
 import websockets
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
+from .common_util import *
 
 
 class WebSocketServer:
@@ -25,30 +24,16 @@ class WebSocketServer:
         self.host = "0.0.0.0"
         self.port = 5566
         self.debug = True  # 默认开启调试模式
-        self.local_ip = self.get_local_ip()
+        self.local_ip = get_local_ip()
         self.current_file = os.path.abspath(sys.modules[import_name].__file__) \
             if import_name \
             else os.path.abspath(__file__)
         self.observer = None
-        self.logger = self.setup_logging()
+        self.logger = common_logger
 
         # 装饰器
         self.message_handler = None
         self.simulation_handler = None
-
-    @staticmethod
-    def setup_logging():
-        """配置日志系统"""
-        log_format = ' [%(levelname)s] %(asctime)s %(message)s'
-        date_format = '%Y-%m-%d %H:%M:%S'
-
-        logging.basicConfig(
-            level=logging.INFO,
-            format=log_format,
-            datefmt=date_format
-        )
-
-        return logging.getLogger(__name__)
 
     def on_message(self, func):
         """注册消息处理的函数装饰器"""
@@ -70,21 +55,6 @@ class WebSocketServer:
 
         self.simulation_handler = wrapper
         return func
-
-    def get_local_ip(self):
-        """
-        获取本机局域网IP地址
-        :return:    本机局域网IP
-        """
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            return ip
-        except Exception as e:
-            self.logger.error(f"获取本地IP失败: {str(e)}")
-            return "127.0.0.1"
 
     async def handle_client(self, websocket):
         """处理客户端连接"""

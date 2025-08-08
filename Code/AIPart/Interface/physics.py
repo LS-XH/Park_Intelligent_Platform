@@ -1,11 +1,12 @@
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod, ABC
 
 
-class RigidBody:
+class RigidBody(ABC):
     @property
     @abstractmethod
     def p_x(self):
         pass
+
     @property
     @abstractmethod
     def p_y(self):
@@ -15,6 +16,7 @@ class RigidBody:
     @abstractmethod
     def v_x(self):
         pass
+
     @property
     @abstractmethod
     def v_y(self):
@@ -22,8 +24,5 @@ class RigidBody:
 
     @property
     @abstractmethod
-    def simulate(self,dt:float=0):
+    def simulate(self, dt: float = 0):
         pass
-
-
-
