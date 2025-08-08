@@ -2,7 +2,6 @@ import json
 from abc import abstractmethod
 import numpy as np
 from enum import Enum
-import math
 
 class PointType(Enum):
     crossing=0
