@@ -8,6 +8,8 @@ CARS_NUM_THREADS = 30
 PEOPLE_NUM_THREADS = 3000
 
 class Graph(GraphBase):
+    green_light=20
+
     def __init__(self):
         super().__init__()
         self.__points=[]
@@ -77,9 +79,14 @@ class Graph(GraphBase):
 
         return np.array(self.__limit_speed)
 
-    @property
-    def traffic_light(self)->np.ndarray:
-        pass
+
+    def traffic_light(self)->np.matrix:
+        light_mat=np.zeros((len(self.__points),len(self.__points)))
+        for end in range(len(self.__points)):
+            count = 0
+            for start in range(len(self.__points)):
+                if self.degree
+
 
 
     @property
