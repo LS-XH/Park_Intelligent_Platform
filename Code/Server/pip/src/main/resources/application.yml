@@ -1,0 +1,65 @@
+spring:
+  datasource:
+    url: jdbc:opengauss://47.113.224.195:5432/postgres?currentSchema=pip
+    username: gaussdb
+    password: MyPassword@123
+    driver-class-name: org.opengauss.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 2864201368@qq.com
+    password: onehhunksqknddfc
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+  data:
+    redis:
+      host: 47.113.224.195
+      port: 6379
+      password: qg@studio@2022
+      timeout: 5000ms  # ???????????
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 10
+          min-idle: 1
+          time-between-eviction-runs: 10s
+        shutdown-timeout: 0ms  # ??????
+      database: 2
+server:
+  port: 8080
+
+mybatis-plus:
+  type-handlers-package: com.dyy.handler
+  configuration:
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+
+rsa:
+  key-pairs:
+    pair1:
+      private-key: |
+        -----BEGIN PRIVATE KEY-----
+        MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQC1AZj7Ik201dBfzZ9eP3rJCsdt9Hy7RP9KR+xTWnI+VGrW+fDUAzYyFzegXemaXpgePTchdbeioow+JkUPkWQWOmOlmgg+aXMymqgvkix1e3MrepRJkRNVXJJ5KvSJt7OPR5K5B8QTyLXEP8sOLaVpfTJxOmrbe5EwLf1iF63JmL+JoM3vxFZX/kroirb9fYCsWfaZG8IIil5SXlgS7UPd5mpy+pXn0QrhwP2Gw23nG8pX+AwTuL65dJC8DSZMfvFdWZeTQnw6AVS8StMmvXazMNWgOzA65kCJlQB62T69/CYttAjGGXzbWZ6Koe0/TOtpADIdLDOPIe++lxm6Rrn9AgMBAAECggEASPwDbOPIlG2Qb0jQhWawQkc74cyuzK4GCDQXCQcTwKk2SUePwVUoMatl7R5g9rNEwBCr3ayDJqtHRDoXJ69WvZW+n0QMJepMHm/49/GHRrnH1xS+nSlHs+g3UW8uGie92byg30XP3LBWBnM4k5d5Np9aSwiklKpvAQ/SNw7YLsxgG3tjmMgzbzQnNtTdW81BV+A4KIaYVUZnoSEVSzHN3T7WZgG9TLiCm7AowQ8qFTK0Sxu0kO3JGc6G3GkQmR77J4YDIv8O+Da+ITmyVEwxtzuIKNa/VDCtV3Anxit+Hk0xBNsT9Vvdv3upMyjOggjXnWbQYUXN4zbv1IoWlwqOiwKBgQDlzIUZHQPY5t1BWOOXr1w7KRVfxtqm9fKy1x4v+T7f1SPOmFpmAg3Qfv6c1dpON8d6NJS01kuymFW/iPVdvjpoGWqYBSEn0mbz9iBU9quNaU4WhqmlU8OdfqCch0jOK/l+3WCl4BshShpis2mvXPa8HtygkRqQfMVGML2nGttb+wKBgQDJpOTiJSRlcRgj27qXsQjXwrJsEAoZ0cA/UaUlWed/qHBsLE9yk+Y3bxlFc8Sf0wLJejaaCOQ4IS6e81bl7AOT/VBqU77zzBS1uZ4L1dMlJipELgtQcsv06CblDhnRJLAAJ0/xtX6HUqu2v8pGqaLyqsESZXn8TdwxyBKfbnioZwKBgQCIgQ7nNhcc9zajJLw9VIvDEMqDlEo6N4sttR9XfAVfTOryRAoe4kV2fpmcbGQ7ZmL2MtnK+ikJM/hryF2IjAGB6Ocq2pExaIiDjsbx8X1CiTU7qE6JyNJAcgHSOYKEBhc0xygsII29HpnB27WB2AUxBlwkfU18WsGMylM+OnPnlQKBgQC7MtQyhlzVuDq6/4Co1vfopp3R6MoX0jxyDDAPDvn177//DNvs+RVfHUsOyT0fS1xpA4axVdPZsCSB+FMSPRvNRfxj2b+Kwknvs5TgU/AjqtzOUxi55PkoMmX5fC/HlBG48sYrFV2T79HuZPs6wr2+H3wCwiaPbxEfPijbzklBvQKBgBFCAippRBOSX6gol9VJSwzB61Ak9U2vYKucWia4GrEtS/faEUmNKj220qksTEjiACnbTrWojZFKEWx30s+mrkwXdXmNbuq2so5fEvjGQ8rKXCcJNp5/pInPMvhCvw4tUuJ9lEH8EXkDFFRlTVoUnlWofHdTcQreOs/tkHlfrC5M
+        -----END PRIVATE KEY-----
+      public-key: |
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtQGY+yJNtNXQX82fXj96yQrHbfR8u0T/SkfsU1pyPlRq1vnw1AM2Mhc3oF3pml6YHj03IXW3oqKMPiZFD5FkFjpjpZoIPmlzMpqoL5IsdXtzK3qUSZETVVySeSr0ibezj0eSuQfEE8i1xD/LDi2laX0ycTpq23uRMC39YhetyZi/iaDN78RWV/5K6Iq2/X2ArFn2mRvCCIpeUl5YEu1D3eZqcvqV59EK4cD9hsNt5xvKV/gME7i+uXSQvA0mTH7xXVmXk0J8OgFUvErTJr12szDVoDswOuZAiZUAetk+vfwmLbQIxhl821meiqHtP0zraQAyHSwzjyHvvpcZuka5/QIDAQAB
+        -----END PUBLIC KEY-----
+    pair2:
+      private-key: |
+        -----BEGIN PRIVATE KEY-----
+        MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCxAF8etTs1hUHyXSSYPv1rJFtLY2a7SA4oiDXvt+Ub8yJl3lMhi4f544g2sUWC7orWOZOp5QPDkubZI+h8LV9X75XrKEm7xW95prRaEUSVKunkXi+xnfgcHuSlmYfpWn+7212iEOtd75xV07vggvGzD0IukSkWsUeaBOFVIq01/AITFl45PmU3pQqCzGn4cgVuEpYX00ymZ5jDmJ7XRh6830Wr3HXVp6D5mApy3UbMX1F85xfSHozPjG7jmrltZFBL52O+msFLm29g4JVmP0oRqeW1sUWrvU+aJAt2QfuKYIW3Ac9nMrlMBh6Scf6tpKOUYMyyKOz4jy1Hxem5Bxe3AgMBAAECggEAFUUEKSksukZkdv62XQ0vYBFNtIYiBt37xZHIrsvHCPrIkWaL+tCiQGcVK+1VewxgkVRN6EaQPeTd6g356/d6fj4Dd+9Zcj+hdlmP+/AYm7bnxaeDzQY8lbR9/rWvsrJLUy8N1gx5HB/6W13ximMchEs7GrlwLz09FhxWr5JWhNFV9DKTkaTocHaAAW20AwCH8amak3W+6G18gSldTHWpGUf3teu2L5r9PgnbqjoR4NkTH0jlM7cn8ASWqD+HK/Sqx/LDQNVG0jB1shwTCmNvFEF45gbeqkRvAegO5W7KV7LKuYYgSF6ydvSWs/eALEpA9e6lK/n2m7JrvNjhV2S3gQKBgQD4CcfJlT9Af+6Risf0PcCURKBBuKKjAI/4Y2gAR4nnBodN8+NL7f1rM+tp0nTVoUfvzlyafJ4G8ZZy9wRnXVxmRUrzETwO2fLnJHmBP4DLEcUuc3P2E1kLcQ9EyW4ZOJzzP6Wbp9wWsdoGXTru+8HzVae/GMwiIi3M4PGVY/3XYQKBgQC2rttBQ9OlnaI3cBsq62nlmBeKtbvYBKl1YYmsIh0Ucc6KgA8ieOjKRaY+f1Mt6jh5ZmA3GZd2T/oO1mPYjFdboIidjKathTUSlkepYn9XoiXzleWxr046jJTkDlBvUSRXW+ssGmPTzongUmY8D/IT3FliB+mzOh7STomqo5d+FwKBgFeQHFetuIasoyv+Mlim9DVjhK+u3rtsl2a4sR5oIubMBzgdwUAs5CnUSmcxRM2mAh9GWqqvE5qf7tznF0bmTphMHglxLCKSDo5K8hoOsQj/XPzpBSb57ZV8dEd0VMnSkpXNAknRGIFqh+13PDbh6bZdprpvpqDmMAUD5EU454QBAoGAGvorarHneVeT8vfdKzNkigExyMwZl0bo92qV+BN5k+FSjOVoVsDgL66lZClNUUR7XoIdx0VCNriMxtAmIn5nECLeydVRb+Jx+fKzVnIzN++8BwKlzt2CgebsvdjXS/kBkt0CF5s2Drs7ZSMF8eyw5PnvQSjF/C+jCY+LiOVro7UCgYEA09LHiUkYoU+l4e5WepA6FYLKKFhOrLBprt/pTK+BEpt4gy2tQD5tkhDprAxo8sZ37eLbEqV5nzmFfbY4NpHx7JoTVC4bP/FQ1buGNVFZK4ZkByGqLZensJP4Ib1WimPuaBrSG1bApLKtBWW3xihBvKfoNCHPua/hEJciwDgxSBk=
+        -----END PRIVATE KEY-----
+      public-key: |
+        -----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsQBfHrU7NYVB8l0kmD79ayRbS2Nmu0gOKIg177flG/MiZd5TIYuH+eOINrFFgu6K1jmTqeUDw5Lm2SPofC1fV++V6yhJu8Vveaa0WhFElSrp5F4vsZ34HB7kpZmH6Vp/u9tdohDrXe+cVdO74ILxsw9CLpEpFrFHmgThVSKtNfwCExZeOT5lN6UKgsxp+HIFbhKWF9NMpmeYw5ie10YevN9Fq9x11aeg+ZgKct1GzF9RfOcX0h6Mz4xu45q5bWRQS+djvprBS5tvYOCVZj9KEanltbFFq71PmiQLdkH7imCFtwHPZzK5TAYeknH+raSjlGDMsijs+I8tR8XpuQcXtwIDAQAB
+        -----END PUBLIC KEY-----
