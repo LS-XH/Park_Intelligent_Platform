@@ -1,8 +1,7 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class PersonBase:
-
+class PersonBase(ABC):
     @abstractmethod
     def __init__(self, position:list, graph:any, *kwargs):
         """
@@ -39,3 +38,13 @@ class PersonBase:
         :return: [(x, y), (x, y), ...] in range
         """
         pass
+
+    @abstractmethod
+    def kill(self, node_id:int, ranges:int=20):
+        """
+        remove people in range
+        :param node_id:
+        :param ranges:
+        """
+        pass
+
