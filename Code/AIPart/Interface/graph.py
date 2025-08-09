@@ -4,7 +4,6 @@ from enum import Enum
 
 import numpy as np
 
-
 class PointType(Enum):
     crossing = 0
     station = 1
