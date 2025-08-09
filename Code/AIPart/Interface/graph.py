@@ -1,38 +1,42 @@
 import json
-from abc import abstractmethod
-import numpy as np
+from abc import abstractmethod, ABC
 from enum import Enum
 
+import numpy as np
+
 class PointType(Enum):
-    crossing=0
-    station=1
+    crossing = 0
+    station = 1
 
 
 class Point:
-    def __init__(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
-        self.__id=id
-        self.__x=x
-        self.__y=y
-        self.__type=type
+    def __init__(self, id: str, x: float, y: float, type: PointType = PointType.crossing):
+        self.__id = id
+        self.__x = x
+        self.__y = y
+        self.__type = type
+
     @property
-    def type(self)->PointType:
+    def type(self) -> PointType:
         # 返回点的类型
         return self.__type
 
     @property
-    def id(self)->str:
+    def id(self) -> str:
         # 返回点的id
         return self.__id
 
     @property
-    def x(self)->float:
+    def x(self) -> float:
         return self.__x
+
     @property
-    def y(self)->float:
+    def y(self) -> float:
         return self.__y
 
+
 class Edge:
-    def __init__(self,start_id:str,end_id:str,length:float,degree:int,limit_speed:float):
+    def __init__(self, start_id: str, end_id: str, length: float, degree: int, limit_speed: float):
         self.start = start_id
         self.end = end_id
         self.__length = length
@@ -40,47 +44,35 @@ class Edge:
         self.__limit_speed = limit_speed
 
     @property
-    def length(self)->float:
+    def length(self) -> float:
         return self.__length
+
     @property
-    def degree(self)->float:
+    def degree(self) -> float:
         return self.__degree
 
     @property
-    def start_id(self)->str:
+    def start_id(self) -> str:
         return self.start
+
     @property
-    def end_id(self)->str:
+    def end_id(self) -> str:
         return self.end
+
     @property
-    def limit_speed(self)->float:
+    def limit_speed(self) -> float:
         return self.__limit_speed
 
-class GraphBase:
+
+class GraphBase(ABC):
     def __init__(self):
-        self.__points=[]
-        self.__points_id={}
-        self.__edges=[]
-
-    @abstractmethod
-    def initialize_car(self):
-        """
-        初始化车的位置
-        :return:
-        """
-        pass
-    @abstractmethod
-    def initialize_crowd(self):
-        """
-        初始化人的位置
-        :return:
-        """
-        pass
-
+        self.__points = []
+        self.__points_id = {}
+        self.__edges = []
 
     @property
     @abstractmethod
-    def nodes_position(self)->np.matrix:
+    def nodes_position(self) -> np.matrix:
         """
         节点矩阵，行为序号，列0为x，列1为y
         :return: dim=2
@@ -89,7 +81,7 @@ class GraphBase:
 
     @property
     @abstractmethod
-    def length(self)->np.matrix:
+    def length(self) -> np.matrix:
         """
         道路长度邻接矩阵
         :return: dim=2
@@ -98,7 +90,7 @@ class GraphBase:
 
     @property
     @abstractmethod
-    def weight(self)->np.matrix:
+    def weight(self) -> np.matrix:
         """
         权重邻接矩阵
         :return: dim=2
@@ -107,7 +99,7 @@ class GraphBase:
 
     @property
     @abstractmethod
-    def degree(self)->np.matrix:
+    def degree(self) -> np.matrix:
         """
         道路数量和方向的度矩阵
         :return: dim=2
@@ -116,23 +108,23 @@ class GraphBase:
 
     @property
     @abstractmethod
-    def limit_speed(self)->np.matrix:
-        n=len(self.__points)
-        speed_mat=np.zeros((n,n))
+    def limit_speed(self) -> np.matrix:
+        n = len(self.__points)
+        speed_mat = np.zeros((n, n))
         for edge in self.__edges:
-            i=self.__points_id[edge.start_id]
-            j=self.__points_id[edge.end_id]
-            speed_mat[i, j]=edge.limit_speed
+            i = self.__points_id[edge.start_id]
+            j = self.__points_id[edge.end_id]
+            speed_mat[i, j] = edge.limit_speed
         return np.matrix(speed_mat)
 
     @property
     @abstractmethod
-    def traffic_light(self)->np.matrix:
+    def traffic_light(self) -> np.matrix:
         pass
 
     @property
     @abstractmethod
-    def get_light(self,start_id:str="",end_id:str="")->float:
+    def get_light(self, start_id: str = "", end_id: str = "") -> float:
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
         :param start_id: 起始点的名称id
@@ -143,25 +135,24 @@ class GraphBase:
         # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
 
     @abstractmethod
-    def _simulate_light(self,dt=0.1):
+    def _simulate_light(self, dt=0.1):
         pass
 
     @abstractmethod
-    def simulate(self,dt=0.1):
+    def simulate(self, dt=0.1):
         self._simulate_light(dt=dt)
         pass
 
-    def add_point(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
-        self.__points.append(Point(id,x,y,type=type))
-        self.__points_id[id]=len(self.__points_id)
+    def add_point(self, id: str, x: float, y: float, type: PointType = PointType.crossing):
+        self.__points.append(Point(id, x, y, type=type))
+        self.__points_id[id] = len(self.__points_id)
         return True
 
-    def add_edge(self,start_id:str,end_id:str,length:float,degree:int,limit_speed:float):
+    def add_edge(self, start_id: str, end_id: str, length: float, degree: int, limit_speed: float):
         if not (start_id in [p.id for p in self.__points] and end_id in [p.id for p in self.__points]):
             raise Exception("")
 
-        self.__edges.append(Edge(start_id,end_id,length,degree,limit_speed))
+        self.__edges.append(Edge(start_id, end_id, length, degree, limit_speed))
 
-    def load_json(self,path:str):
-        with open(path,'r') as f:
-            data=json.load(f)
+    def load_json(self, path: str):
+        pass

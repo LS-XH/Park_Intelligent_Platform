@@ -1,8 +1,7 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class PersonBase:
-
+class PersonBase(ABC):
     @abstractmethod
     def __init__(self, total_number:int, graph:any, *kwargs):
         """

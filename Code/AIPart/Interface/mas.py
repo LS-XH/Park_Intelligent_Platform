@@ -1,13 +1,13 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class MasBase:
-    def __init__(self,start_id,end_id):
+class MasBase(ABC):
+    def __init__(self, start_id, end_id):
         self.start_id = start_id
         self.end_id = end_id
 
     @abstractmethod
-    def contral(self):
+    def control(self):
         """
         获取当前帧的信息，检查此智能体是否需要调控
         :return:
