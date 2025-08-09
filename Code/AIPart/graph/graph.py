@@ -1,74 +1,83 @@
-from Interface import GraphBase
+from Interface.graph import GraphBase, PointType,Point, Edge
 import math
 import numpy as np
 import json
+from .common_func import generate_cars_list, generate_people_list
+
+CARS_NUM_THREADS = 30
+PEOPLE_NUM_THREADS = 3000
 
 class Graph(GraphBase):
     green_light=20
 
     def __init__(self):
+        super().__init__()
         self.__points=[]
         self.__points_id={}
         self.__edges=[]
 
-    def initialize_car(self):
-        """
-        初始化车的位置
-        :return:
-        """
-        pass
+        self.__positions = np.empty((0,2))
+        self.__length = np.empty((0,0))
+        self.__weight = np.empty((0,0))
+        self.__degree = np.empty((0,0))
+        self.__limit_speed = np.empty((0,0))
 
-    def initialize_crowd(self):
+
+    def initialize_car(self, num_cars=None):
+        """
+        初始化车的位置，根据固定的热点数据随机生成
+
+        :param num_cars:    生成的车的数量
+        :return:            字典，键表示车的ID，值表示车的坐标
+        """
+
+        cars_list = generate_cars_list(num_cars)
+        return cars_list
+
+    def initialize_crowd(self, num_people=None):
         """
         初始化人的位置
         :return:
         """
-        pass
+        people_list = generate_people_list(num_people)
+        return people_list
 
-
-    def nodes_position(self)->np.matrix:
+    @property
+    def nodes_position(self)->np.ndarray:
         """
         节点矩阵，行为序号，列0为x，列1为y
         :return: dim=2
         """
-        positions=[[p.x,p.y] for p in self.__points]
-        return np.matrix(positions)
+        return np.array(self.__positions)
 
-    def length(self)->np.matrix:
+    @property
+    def length(self)->np.ndarray:
         """
         道路长度邻接矩阵
         :return: dim=2
         """
-        n=len(self.__points)
-        length_mat=np.zeros((n,n))
-        for edge in self.__edges:
-            i=self.__points_id[edge.start_id]
-            j=self.__points_id[edge.end_id]
-            length_mat[i,j]=edge.length
-        return np.matrix(length_mat)
+        return np.array(self.__length)
 
-    def weight(self)->np.matrix:
+    @property
+    def weight(self)->np.ndarray:
         """
         权重邻接矩阵
         :return: dim=2
         """
-        pass
+        return np.array(self.__weight)
 
-    def degree(self)->np.matrix:
+    @property
+    def degree(self)->np.ndarray:
         """
         道路数量和方向的度矩阵
         :return: dim=2
         """
-        pass
+        return np.array(self.__degree)
 
-    def limit_speed(self)->np.matrix:
-        n=len(self.__points)
-        speed_mat=np.zeros((n,n))
-        for edge in self.__edges:
-            i=self.__points_id[edge.start_id]
-            j=self.__points_id[edge.end_id]
-            speed_mat[i, j]=edge.limit_speed
-        return np.matrix(speed_mat)
+    @property
+    def limit_speed(self)->np.ndarray:
+
+        return np.array(self.__limit_speed)
 
 
     def traffic_light(self)->np.matrix:
@@ -80,6 +89,7 @@ class Graph(GraphBase):
 
 
 
+    @property
     def get_light(self,start_id:str="",end_id:str="")->float:
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
@@ -90,37 +100,81 @@ class Graph(GraphBase):
         pass
         # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
 
-
     def add_point(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
+        if id in self.__points_id:
+            raise Exception(f"节点 {id} 已存在")
         self.__points.append(Point(id,x,y,type=type))
         self.__points_id[id]=len(self.__points_id)
+
+        n = len(self.__points)
+        self.__positions = np.vstack([self.__positions,[x,y]]) - 1
+
+        new_length=np.zeros((n,n))
+        new_degree=np.zeros((n,n))
+        new_limit_speed=np.zeros((n,n))
+        new_weight=np.zeros((n,n))
+        if n>1:
+            old_n=n-1
+            new_length[0:old_n,0:old_n]=self.__length
+            new_degree[0:old_n,0:old_n]=self.__degree
+            new_limit_speed[0:old_n,0:old_n]=self.__limit_speed
+
+        self.__length = new_length
+        self.__degree = new_degree
+        self.__limit_speed = new_limit_speed
+
         return True
 
     def add_edge(self,start_id:str,end_id:str,length:float,degree:int,limit_speed:float):
         if not (start_id in [p.id for p in self.__points] and end_id in [p.id for p in self.__points]):
-            raise Exception("")
+            raise Exception(f"起始点 {start_id} 或终点 {end_id} 不存在于已添加的节点中")
+
+        i = self.__points_id[start_id]
+        j = self.__points_id[end_id]
+        self.__length[i,j] = length
+        self.__degree[i,j] = degree
+        self.__limit_speed[i,j] = limit_speed
+
+        #self.__weight[i,j] =
 
         self.__edges.append(Edge(start_id,end_id,length,degree,limit_speed))
 
-    def load_json(self,path:str):
-        with open(path,'r') as f:
-            data=json.load(f)
-        for point_data in data['points']:
-            id=str(point_data['id'])
-            x=float(point_data['x'])
-            y=float(point_data['y'])
-            type=point_data['type']
-            self.add_point(id,x,y,type=type)
 
-        for edge_data in data['edges']:
-            start_id=str(edge_data['start_id'])
-            end_id=str(edge_data['end_id'])
-            degree=int(edge_data['degree'])
-            limit_speed=float(edge_data["limit_speed"])
-            start_point=self.__points[self.__points_id[start_id]]
-            end_point=self.__points[self.__points_id[end_id]]
-            length=math.sqrt(
-                (end_point.x-start_point.x)**2+
-                (end_point.y-start_point.y)**2
+    def load_json(self, path: str):
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        for point_id, point_info in data['points'].items():
+            id = str(point_id)
+            x = float(point_info['x'])
+            y = float(point_info['y'])
+            type = PointType(point_info['type'])
+            self.add_point(id, x, y, type=type)
+
+        for edge_key, edge_info in data['edges'].items():
+            start_id, end_id = edge_key.split('->')
+            start_id = str(start_id)
+            end_id = str(end_id)
+
+            degree = int(edge_info['degree'])
+            limit_speed = float(edge_info['limit_speed'])
+
+            start_point = self.__points[self.__points_id[start_id]]
+            end_point = self.__points[self.__points_id[end_id]]
+            length = math.sqrt(
+                (end_point.x - start_point.x) ** 2 +
+                (end_point.y - start_point.y) ** 2
             )
-            self.add_edge(start_id,end_id,length,degree,limit_speed)
+
+            self.add_edge(
+                start_id = start_id,
+                end_id = end_id,
+                length = length,
+                degree = degree,
+                limit_speed = limit_speed
+            )
+
+graph=Graph()
+graph.load_json("data.json")
+print("\n长度的邻接矩阵")
+print(graph.length)

@@ -1,4 +1,4 @@
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 import numpy as np
 
 
@@ -119,8 +119,5 @@ class RigidBody:
 
     @property
     @abstractmethod
-    def simulate(self,dt:float=0):
+    def simulate(self, dt: float = 0):
         pass
-
-
-

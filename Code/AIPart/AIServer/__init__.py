@@ -14,7 +14,6 @@ __all__ = [
     'WebSocketServer'
 ]
 
-# 包的元数据
 __version__ = "1.0.0"
 __author__ = "Yingrui Chen / QG Studio"
 __license__ = "MIT"
