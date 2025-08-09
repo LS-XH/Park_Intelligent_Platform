@@ -4,6 +4,8 @@ import numpy as np
 import json
 
 class Graph(GraphBase):
+    green_light=20
+
     def __init__(self):
         self.__points=[]
         self.__points_id={}
@@ -70,7 +72,13 @@ class Graph(GraphBase):
 
 
     def traffic_light(self)->np.matrix:
-        pass
+        light_mat=np.zeros((len(self.__points),len(self.__points)))
+        for end in range(len(self.__points)):
+            count = 0
+            for start in range(len(self.__points)):
+                if self.degree
+
+
 
     def get_light(self,start_id:str="",end_id:str="")->float:
         """
