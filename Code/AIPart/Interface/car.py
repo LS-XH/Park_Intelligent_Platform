@@ -1,9 +1,10 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
+from typing import Tuple
 
 
-class CarsBase:
+class CarsBase(ABC):
     @abstractmethod
-    def generate_a(self)->[float,float]:
+    def generate_a(self) -> Tuple[float, float]:
         pass
 
     @property
@@ -17,7 +18,7 @@ class CarsBase:
         pass
 
     @abstractmethod
-    def simulate(self,dt:float=0):
+    def simulate(self, dt: float = 0):
         """
         模拟一帧，获取车辆属性
         :param dt: 一帧的实际时间
@@ -33,4 +34,3 @@ class CarsBase:
         }
         """
         pass
-
