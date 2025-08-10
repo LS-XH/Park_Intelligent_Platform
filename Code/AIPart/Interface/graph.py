@@ -138,6 +138,7 @@ class GraphBase(ABC):
 
     @abstractmethod
     def get_light(self, start_id, end_id) -> float:
+
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
         :param start_id: 起始点的名称id
@@ -156,6 +157,7 @@ class GraphBase(ABC):
 
     def add_point(self, id: int, name: str , x: float, y: float, degree:int, type: PointType = PointType.crossing):
         self.__points.append(Point(id,name, x, y, degree, type=type))
+
         self.__points_id[id] = len(self.__points_id)
         return True
 
@@ -167,4 +169,3 @@ class GraphBase(ABC):
 
     def load_json(self, path: str):
         pass
-
