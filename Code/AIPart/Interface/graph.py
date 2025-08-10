@@ -1,4 +1,3 @@
-import json
 from abc import abstractmethod, ABC
 from enum import Enum
 
@@ -10,10 +9,11 @@ class PointType(Enum):
 
 
 class Point:
-    def __init__(self, id: str, x: float, y: float, type: PointType = PointType.crossing):
+    def __init__(self, id: int, x: float, y: float, degree: int, type: PointType = PointType.crossing):
         self.__id = id
         self.__x = x
         self.__y = y
+        self.__degree = degree
         self.__type = type
 
     @property
@@ -22,7 +22,7 @@ class Point:
         return self.__type
 
     @property
-    def id(self) -> str:
+    def id(self) -> int:
         # 返回点的id
         return self.__id
 
@@ -34,13 +34,15 @@ class Point:
     def y(self) -> float:
         return self.__y
 
+    def degree(self) -> int:
+        return self.__degree
+
 
 class Edge:
-    def __init__(self, start_id: str, end_id: str, length: float, degree: int, limit_speed: float):
+    def __init__(self, start_id: int, end_id: int, length: float,  limit_speed: float, car_num: list = None):
         self.start = start_id
         self.end = end_id
         self.__length = length
-        self.__degree = degree
         self.__limit_speed = limit_speed
 
     @property
@@ -48,15 +50,11 @@ class Edge:
         return self.__length
 
     @property
-    def degree(self) -> float:
-        return self.__degree
-
-    @property
-    def start_id(self) -> str:
+    def start_id(self) -> int:
         return self.start
 
     @property
-    def end_id(self) -> str:
+    def end_id(self) -> int:
         return self.end
 
     @property
@@ -124,7 +122,7 @@ class GraphBase(ABC):
 
     @property
     @abstractmethod
-    def get_light(self, start_id: str = "", end_id: str = "") -> float:
+    def get_light(self, start_id: int, end_id: int) -> float:
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
         :param start_id: 起始点的名称id
@@ -143,16 +141,16 @@ class GraphBase(ABC):
         self._simulate_light(dt=dt)
         pass
 
-    def add_point(self, id: str, x: float, y: float, type: PointType = PointType.crossing):
-        self.__points.append(Point(id, x, y, type=type))
+    def add_point(self, id: int, x: float, y: float, degree:int, type: PointType = PointType.crossing):
+        self.__points.append(Point(id, x, y, degree, type=type))
         self.__points_id[id] = len(self.__points_id)
         return True
 
-    def add_edge(self, start_id: str, end_id: str, length: float, degree: int, limit_speed: float):
+    def add_edge(self, start_id: int, end_id: int, length: float,  limit_speed: float):
         if not (start_id in [p.id for p in self.__points] and end_id in [p.id for p in self.__points]):
             raise Exception("")
 
-        self.__edges.append(Edge(start_id, end_id, length, degree, limit_speed))
+        self.__edges.append(Edge(start_id, end_id, length, limit_speed))
 
     def load_json(self, path: str):
         pass
