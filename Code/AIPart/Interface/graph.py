@@ -9,8 +9,9 @@ class PointType(Enum):
 
 
 class Point:
-    def __init__(self, id: int, x: float, y: float, degree: int, type: PointType = PointType.crossing):
+    def __init__(self, id: int, name:str, x: float, y: float, degree: int, type: PointType = PointType.crossing):
         self.__id = id
+        self.__name = name
         self.__x = x
         self.__y = y
         self.__degree = degree
@@ -20,6 +21,10 @@ class Point:
     def type(self) -> PointType:
         # 返回点的类型
         return self.__type
+
+    @property
+    def name(self) -> str:
+        return self.__name
 
     @property
     def id(self) -> int:
@@ -39,11 +44,14 @@ class Point:
 
 
 class Edge:
-    def __init__(self, start_id: int, end_id: int, length: float,  limit_speed: float, car_num: list = None):
-        self.start = start_id
-        self.end = end_id
+    def __init__(self, start_name: str, end_name: str, length: float,  limit_speed: float, start_id: int, end_id: int, car_num: list = None):
+        self.__start_id = start_id
+        self.__end_id = end_id
+        self.__length = length
         self.__length = length
         self.__limit_speed = limit_speed
+        self.__start_name = start_name
+        self.__end_name = end_name
 
     @property
     def length(self) -> float:
@@ -51,11 +59,19 @@ class Edge:
 
     @property
     def start_id(self) -> int:
-        return self.start
+        return self.__start_id
 
     @property
     def end_id(self) -> int:
-        return self.end
+        return self.__end_id
+
+    @property
+    def start_name(self) -> str:
+        return self.__start_name
+
+    @property
+    def end_name(self) -> str:
+        return self.__end_name
 
     @property
     def limit_speed(self) -> float:
@@ -120,9 +136,8 @@ class GraphBase(ABC):
     def traffic_light(self) -> np.matrix:
         pass
 
-    @property
     @abstractmethod
-    def get_light(self, start_id: int, end_id: int) -> float:
+    def get_light(self, start_id, end_id) -> float:
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
         :param start_id: 起始点的名称id
@@ -132,17 +147,15 @@ class GraphBase(ABC):
         pass
         # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
 
-    @abstractmethod
-    def _simulate_light(self, dt=0.1):
+    def simulate_light(self, dt=0.1):
         pass
 
-    @abstractmethod
     def simulate(self, dt=0.1):
-        self._simulate_light(dt=dt)
+        self.simulate_light(dt=dt)
         pass
 
-    def add_point(self, id: int, x: float, y: float, degree:int, type: PointType = PointType.crossing):
-        self.__points.append(Point(id, x, y, degree, type=type))
+    def add_point(self, id: int, name: str , x: float, y: float, degree:int, type: PointType = PointType.crossing):
+        self.__points.append(Point(id,name, x, y, degree, type=type))
         self.__points_id[id] = len(self.__points_id)
         return True
 
@@ -154,3 +167,4 @@ class GraphBase(ABC):
 
     def load_json(self, path: str):
         pass
+

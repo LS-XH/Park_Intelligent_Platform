@@ -60,7 +60,7 @@ def generate_cars_list(num_cars):
     """
 
     hot_data = read_json_data('./hot_data.json')
-    graph = read_json_data('./data.json')
+    graph = read_json_data('data02.json')
     points = graph['points']
     edges = graph['edges']
 
@@ -97,7 +97,7 @@ def generate_people_list(num_people):
     """
 
     hot_data = read_json_data('./hot_data.json')
-    graph = read_json_data('./data.json')
+    graph = read_json_data('data02.json')
     points = graph['points']
 
     peoples = []
@@ -118,7 +118,7 @@ def generate_people_list(num_people):
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
 
-    graph = read_json_data('./data.json')
+    graph = read_json_data('data02.json')
     points = graph['points']
 
     my_crowd = generate_people_list(3000)
