@@ -1,6 +1,6 @@
 import json
 import random
-
+import math
 
 def read_json_data(path):
     """
@@ -74,12 +74,17 @@ def generate_cars_list(num_cars):
         x2 = points[random_next_point_id]['x']
         y2 = points[random_next_point_id]['y']
 
+        theta = math.atan2((y2 - y1), (x2 - x1))
+        theta = math.degrees(theta)
+        if theta < 0:
+            theta += 360
+
         random_percent = random.random()
 
         x = x1 + (x2 - x1) * random_percent
         y = y1 + (y2 - y1) * random_percent
 
-        cars[i] = {'x': x, 'y': y}
+        cars[i] = {'x': x, 'y': y, 'theta': theta}
 
     return cars
 

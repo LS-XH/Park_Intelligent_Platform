@@ -1,6 +1,10 @@
+<<<<<<< Updated upstream
 import json
 from abc import abstractmethod
 import numpy as np
+=======
+from abc import abstractmethod, ABC
+>>>>>>> Stashed changes
 from enum import Enum
 
 class PointType(Enum):
@@ -9,18 +13,32 @@ class PointType(Enum):
 
 
 class Point:
+<<<<<<< Updated upstream
     def __init__(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
         self.__id=id
         self.__x=x
         self.__y=y
         self.__type=type
+=======
+    def __init__(self, id: int, x: float, y: float, degree: int, type: PointType = PointType.crossing):
+        self.__id = id
+        self.__x = x
+        self.__y = y
+        self.__degree = degree
+        self.__type = type
+
+>>>>>>> Stashed changes
     @property
     def type(self)->PointType:
         # 返回点的类型
         return self.__type
 
     @property
+<<<<<<< Updated upstream
     def id(self)->str:
+=======
+    def id(self) -> int:
+>>>>>>> Stashed changes
         # 返回点的id
         return self.__id
 
@@ -31,25 +49,41 @@ class Point:
     def y(self)->float:
         return self.__y
 
+<<<<<<< Updated upstream
 class Edge:
     def __init__(self,start_id:str,end_id:str,length:float,degree:int,limit_speed:float):
+=======
+    def degree(self) -> int:
+        return self.__degree
+
+
+class Edge:
+    def __init__(self, start_id: int, end_id: int, length: float,  limit_speed: float, car_num: list = None):
+>>>>>>> Stashed changes
         self.start = start_id
         self.end = end_id
         self.__length = length
-        self.__degree = degree
         self.__limit_speed = limit_speed
 
     @property
     def length(self)->float:
         return self.__length
     @property
+<<<<<<< Updated upstream
     def degree(self)->float:
         return self.__degree
     @property
     def start_id(self)->str:
+=======
+    def start_id(self) -> int:
+>>>>>>> Stashed changes
         return self.start
     @property
+<<<<<<< Updated upstream
     def end_id(self)->str:
+=======
+    def end_id(self) -> int:
+>>>>>>> Stashed changes
         return self.end
     @property
     def limit_speed(self)->float:
@@ -131,7 +165,11 @@ class GraphBase:
 
     @property
     @abstractmethod
+<<<<<<< Updated upstream
     def get_light(self,start_id:str="",end_id:str="")->float:
+=======
+    def get_light(self, start_id: int, end_id: int) -> float:
+>>>>>>> Stashed changes
         """
         获取红绿灯所剩的时间，如果为负数，则是绿灯，其绝对值为所剩的时间
         :param start_id: 起始点的名称id
@@ -142,6 +180,7 @@ class GraphBase:
         # self.traffic_light[self.__points_id[start_id],self.__points_id[end_id]]
 
 
+<<<<<<< Updated upstream
     def add_point(self,id:str,x:float,y:float,type:PointType=PointType.crossing):
         self.__points.append(Point(id,x,y,type=type))
         self.__points_id[id]=len(self.__points_id)
@@ -152,6 +191,23 @@ class GraphBase:
             raise Exception("")
 
         self.__edges.append(Edge(start_id,end_id,length,degree,limit_speed))
+=======
+    @abstractmethod
+    def simulate(self, dt=0.1):
+        self._simulate_light(dt=dt)
+        pass
+
+    def add_point(self, id: int, x: float, y: float, degree:int, type: PointType = PointType.crossing):
+        self.__points.append(Point(id, x, y, degree, type=type))
+        self.__points_id[id] = len(self.__points_id)
+        return True
+
+    def add_edge(self, start_id: int, end_id: int, length: float,  limit_speed: float):
+        if not (start_id in [p.id for p in self.__points] and end_id in [p.id for p in self.__points]):
+            raise Exception("")
+
+        self.__edges.append(Edge(start_id, end_id, length, limit_speed))
+>>>>>>> Stashed changes
 
     def load_json(self,path:str):
         with open(path,'r') as f:
