@@ -1,10 +1,4 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-import random
-import matplotlib
-from math import log10
-from testmap import obstacles_params, targets, targets_heat, points
+
 from model import *
 
 # 配置交互后端
