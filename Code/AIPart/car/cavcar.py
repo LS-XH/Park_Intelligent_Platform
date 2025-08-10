@@ -1,22 +1,30 @@
+from sympy.physics.units.definitions import curie
 from typing_extensions import Optional
-
-from Interface.physics import RigidBody
 import numpy as np
 import torch
 import random
 
+from Interface.physics import RigidBody
+from Interface.car import CarsBase
+import Interface
+import car.tendency as td
+
 
 
 class Car(RigidBody):
-    car_length=1
+    car_length=4
     min_distance=1
-    lane_length=2
+    lane_length=3
 
 
     def __init__(self,lane=0,x=0,y=0,id=""):
         super(Car,self).__init__(p_x=x,p_y=y)
         self.__obj_lane=lane
         self.id=id
+
+        self.v_x = 0.01
+
+        self.text = ""
 
 
 
@@ -36,35 +44,7 @@ class Car(RigidBody):
         :param b:
         :return:
         """
-        self.__a_v += a * ((obj_car.p_x - self.p_x - r_v) + b * (obj_car.v_x - self.v_x))
-
-
-
-    def lane_centre_ah(self,a:float=1,b:float=1):
-        """
-        变道趋势，即为对齐车道中心
-        :param a: 邻接权重系数
-        :param b: 速度阻尼系数
-        :return:
-        """
-        r_lane = (self.obj_lane+0.5)*self.lane_length
-        a_y = a*((r_lane-self.p_y)+b*(0-self.v_y))
-        self.__a_h += a_y
-
-    def chatter_a(self,amplitude=0.01):
-        """
-        引入随机震荡
-        :param amplitude: 震荡幅度
-        :return:
-        """
-        self.__a_v += random.uniform(-abs(amplitude), abs(amplitude))
-        self.__a_h += random.uniform(-abs(amplitude), abs(amplitude))
-
-    def limrate_av(self,k=1,limit_rate = 20):
-        if self.v_x>limit_rate:
-            self.__a_v += -k * self.v_x
-
-
+        self.a_x += a * ((obj_car.p_x - self.p_x - r_v) + b * (obj_car.v_x - self.v_x))
 
     @property
     def obj_lane(self)->int:
@@ -74,17 +54,13 @@ class Car(RigidBody):
         return int(self.p_y/Car.lane_length)
 
     def zero_a(self):
-        self.__a_v=0
-        self.__a_h=0
+        self.a_x=0
+        self.a_y=0
 
-    def simulate(self,dt:float=0.1):
-        self.__v_v+= self.a_x * dt
-        self.__v_h+= self.a_y * dt
+    def simulate(self, dt: float = 0):
+        super(Car,self).simulate(dt)
 
-        self.__p_v+= self.v_x * dt
-        self.__p_h+= self.v_y * dt
 
-        self.zero_a()
 
 class CavGroup:
     def __init__(self, leader:Car, follows:list[Car]):
@@ -94,29 +70,59 @@ class CavGroup:
         return
 
 
-class Cars(Interface.CarsBase):
+class Cars:
     def __init__(self,graph:Optional[Interface.GraphBase],cars:list[Car]):
         self.graph = graph
         self.cars = cars
 
+        self.chatter = td.Chatter(0.1)
+        self.forward = td.Forward(scale=10,bx=0.1)
+        self.to_lane = td.AlignLane(ay=0.1,by=6)
+        self.avoid = td.CircleAvoidance(k=1,ax=0.3,bx=1.5,ay=0.5,by=1.5,safe_distance=10)
+
+        self.brake = td.Brake(max_speed=5)
+        self.cruise = td.Brake(max_speed=10)
+
     def simulate(self,dt:float=0.1):
         for car in self.cars:
-            car.zero_a()
-            car.chatter_a(0.1)
-            car.forward_av(scale=10)
-            car.limrate_av(limit_rate=2)
-            for obj_car in self.cars:
-                if obj_car !=car:
-                    if car.get_lane() != car.obj_lane:
-                        car.lane_centre_ah(a=0.1,b=5)
-                        car.avoidance_a(obj_car,safe_distance=10,k=1,av=0.5,bv=3,ah=0.1,bh=3)
-                    else:
-                        car.lane_centre_ah(a=0.1,b=5)
-                    continue
 
+            if car.id == "0":
+                a = 1
+            if car.id == "1":
+                a = 1
+            if car.id == "4":
+                a = 1
+            if car.id == "8":
+                a = 1
+
+            car.zero_a()
+
+            avoid = self.avoid.increment(car,self.cars)
+
+
+            forward = self.forward(car)
+            brake = self.brake(car)
+            cruise = self.cruise(car)
+            c_lane = self.to_lane.increment(car,obj_lane = car.obj_lane)
+            chatter = self.chatter(car)
+
+            if car.get_lane()==car.obj_lane:
+                forward = forward > avoid
+                forward = forward < avoid
+                # car + cruise
+            else:
+                forward = forward < RigidBody(a_x=-0.1)
+                forward = forward < avoid
+                c_lane = c_lane < avoid
+                # car + brake
+
+            car + forward
+            car + c_lane
+
+            # car + chatter
             car.simulate(dt=dt)
 
+            # car.text = "%.1f,%.1f"%(car.a_x,car.a_y)
+            car.text = car.id
 
-
-
-
+            # car.text = "%.1f,%.1f\n%.1f,%.1f\n" % (car.v_x,car.v_y,car.a_x, car.a_y)
