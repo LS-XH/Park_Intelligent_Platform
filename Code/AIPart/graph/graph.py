@@ -9,13 +9,9 @@ CARS_NUM_THREADS = 30
 PEOPLE_NUM_THREADS = 3000
 
 class Graph(GraphBase):
-<<<<<<< Updated upstream
-    def __init__(self):
-=======
 
 
     def __init__(self,green_light=17,yellow_light=3,red_light=20):
->>>>>>> Stashed changes
         super().__init__()
         self.__points=[]
         self.__points_id={}
@@ -100,11 +96,6 @@ class Graph(GraphBase):
 
         return np.array(self.__limit_speed)
 
-<<<<<<< Updated upstream
-    @property
-    def traffic_light(self)->np.ndarray:
-        pass
-=======
 
     def traffic_light(self)->np.ndarray:
         return np.array(self.__traffic_light)
@@ -118,7 +109,6 @@ class Graph(GraphBase):
     def get_green_light(self):
         return self.__green_light
 
->>>>>>> Stashed changes
 
     def set_green_light(self, value):
         # 可以添加参数校验（如确保是正数）
