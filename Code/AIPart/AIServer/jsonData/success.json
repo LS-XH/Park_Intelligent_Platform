@@ -1,0 +1,15 @@
+{
+  "status": 0,
+  "response": {
+    "content": "success"
+  }
+}
+
+{
+  "status": 2,
+  "message": {
+    "temprature": float,
+    "wind"：str,
+    "airQuality": float
+  }
+}

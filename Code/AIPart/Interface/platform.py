@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 
 
-class PlatformBase:
+class PlatformBase(ABC):
     def __init__(self):
         return
 
