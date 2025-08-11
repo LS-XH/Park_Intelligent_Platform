@@ -1,6 +1,9 @@
 import numpy as np
+import torch
 
 from Code.AIPart.Interface.people import PersonBase
+from Code.AIPart.Ren.model import emergency
+from model import ObstacleGenerator, AgentGroup
 
 
 
@@ -8,27 +11,9 @@ from Code.AIPart.Interface.people import PersonBase
 
 class Crowd(PersonBase):
 
-
-    def __init__(self, position:list, graph:any ):
-        self.pos = position
-        self.graph=graph
-
-    def simulate(self, happened: list = None):
-
-        pass
-
-
-    def get_pos(self, node_id: int, ranges: int = 30) -> list:
-        pass
-
-    @property
-    def position(self) -> list:
-        return []
-
-
-    def kill(self, node_id: int, ranges: int = 20):
-        pass
-
+    @staticmethod
+    def create_agents(num_agents, map_matrix, intersection_id_map, obstacle_gen):
+        return AgentGroup(num_agents, map_matrix, intersection_id_map, obstacle_gen)
 
     @staticmethod
     def get_emergency(happened: list = None):
@@ -55,3 +40,56 @@ class Crowd(PersonBase):
         except IndexError:
             print("Traffic Light Matrix Is Empty")
             return []
+
+    @staticmethod
+    def make_obs():
+        map_size = None
+        obs_params = None
+        obs = ObstacleGenerator(map_size)
+        obs.add_obstacles(obs_params)
+        return obs
+    @staticmethod
+    def deal_map(graph:any) -> (list, np.array, list):
+        """
+
+        :return: obstacles_params, targets, points
+        """
+        return None, None, None
+
+    def __init__(self, position:list, graph:any ):
+        self.pos = position
+        self.graph=graph
+        self.obstacle = self.make_obs()
+        num_agents = 100
+        self.agents = self.create_agents(num_agents, self.obstacle.map_matrix, self.obstacle.intersection_id_map, self.obstacle)
+
+
+
+    def simulate(self, happened: list = None, trafficlight: list = None):
+        emergency = self.get_emergency(happened=happened)
+        eme_pos = []
+        eme_lev = []
+        for pos, lev in emergency:
+            eme_pos.append(pos)
+            eme_lev.append(lev)
+        self.agents.move_towards_target((eme_pos, eme_lev), trafficlight)
+        pass
+
+
+
+
+    def get_pos(self, node_id: int, ranges: int = 30) -> list:
+        pass
+
+    @property
+    def position(self) -> list:
+        return []
+
+
+    def kill(self, node_id: int, ranges: int = 20):
+        pass
+
+
+
+
+
