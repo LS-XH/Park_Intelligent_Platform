@@ -31,10 +31,6 @@ class Graph(GraphBase):
         self.current_red = red_light
         self.current_yellow = yellow_light
         self.current_green = green_light
-        # 新增：每个独立红绿灯的参数（i,j为方向）
-        self.__original_params = {}  # 原始时长：{(i,j): (red, yellow, green)}
-        self._current_params = {}  # 当前生效时长：{(i,j): (red, yellow, green)}
-        self._is_adjusted = {}  # 是否处于调整状态：{(i,j): bool}
 
 
     def initialize_car(self, num_cars=None):
@@ -282,10 +278,9 @@ class Graph(GraphBase):
                 length = length,
                 limit_speed = limit_speed
             )
-        return True
 
 
 graph=Graph()
-graph.load_json("data.json")
+graph.load_json("data02.json")
 print("\n长度的邻接矩阵")
 print(graph.degree)
