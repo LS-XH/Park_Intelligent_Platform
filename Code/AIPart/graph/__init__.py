@@ -1,4 +1,4 @@
-from graph.graph02 import Graph
+from graph.graph import Graph
 
 
 __all__ = ['Graph']

@@ -12,7 +12,6 @@ def read_json_data(path):
 
     with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    f.close()
 
     return data
 
@@ -25,10 +24,9 @@ def select_by_probability(prob_dict):
     :return: 随机选择的key
     """
 
-    keys = list(prob_dict.keys())
-    probabilities = list(prob_dict.values())
-    selected = random.choices(keys, weights=probabilities, k=1)[0]
-
+    keys = list(prob_dict.keys()) # 将字典中的键转换为列表
+    probabilities = list(prob_dict.values()) # 将字典中的值（概率值）转换为列表
+    selected = random.choices(keys, weights=probabilities, k=1)[0] # 使用random.choices函数根据概率权重随机选择一个键
     return selected
 
 
@@ -40,15 +38,16 @@ def get_random_end_points(start_point, edges):
     :param edges:               所有路线
     :return:                    终点ID
     """
-    end_points = []
-    for edge, v in edges.items():
-        start_point_id = edge.split('->')[0]
-        if start_point_id == start_point:
-            end_points.append(edge.split('->')[1])
 
-    random_next_point_id = random.choice(end_points)
+    end_points = [] # 初始化一个空列表，用于存储所有可能的终点
+    start_point_int = int(start_point) # 将起点转换为整数
+    for _, edge_info in edges.items(): # 遍历所有路线
+        current_start = edge_info['start_name'] # 获取当前路线的起点
+        if current_start == start_point_int:
+            end_points.append(edge_info['end_name'])
 
-    return random_next_point_id
+    random_next_point_id = random.choice(end_points) # 从所有可能的终点中随机选择一个作为下一个点
+    return random_next_point_id # 返回随机选择的终点ID
 
 
 def generate_cars_list(num_cars):
@@ -60,7 +59,7 @@ def generate_cars_list(num_cars):
     """
 
     hot_data = read_json_data('./hot_data.json')
-    graph = read_json_data('data02.json')
+    graph = read_json_data('data03.json')
     points = graph['points']
     edges = graph['edges']
 
@@ -97,7 +96,7 @@ def generate_people_list(num_people):
     """
 
     hot_data = read_json_data('./hot_data.json')
-    graph = read_json_data('data02.json')
+    graph = read_json_data('data03.json')
     points = graph['points']
 
     peoples = []
@@ -118,7 +117,7 @@ def generate_people_list(num_people):
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
 
-    graph = read_json_data('data02.json')
+    graph = read_json_data('data03.json')
     points = graph['points']
 
     my_crowd = generate_people_list(3000)
