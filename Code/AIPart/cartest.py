@@ -8,6 +8,22 @@ from matplotlib.animation import FuncAnimation
 from car import *
 
 
+
+
+from graph import Graph
+
+
+g = Graph()
+
+
+
+a =1
+
+
+
+
+
+raise Exception()
 # 设置图形
 fig, ax = plt.subplots(figsize=(20, 4))
 ax.set_xlim(40, 160)
@@ -16,10 +32,14 @@ ax.set_ylim(-12,17)
 #尾迹时间
 wake = 0
 
+# 向量增长比例
+vectork_v = 0.2
+vectork_a = 1
+
 #帧速，模拟速度
 #fps * t = frame_speed
 dt = 0.01
-frame_speed = 0.1
+frame_speed = 1
 
 ax.plot([0,1000],[0,0],color='black')
 ax.plot([0,1000],[3,3],color='black')
@@ -32,11 +52,11 @@ ax.plot([0,1000],[12,12],color='black')
 c_list = [
     Car(1,50,4.5,"0"),
     Car(0,50,1.5,"1"),
-    Car(2,70,1.5,"2"),
-    Car(1,70,4.5,"3"),
+    Car(1,70,1.5,"2"),  ###############
+    Car(1,70,4.5,"3"),  ###############
     Car(2,70,7.5,"4"),
     Car(1,80,4.5,"5"),
-    Car(0,90,1.5,"6"),
+    Car(2,90,1.5,"6"),    #########
     Car(2,90,7.5,"7"),
     Car(0,110,1.5,"8"),
     Car(1,110,4.5,"9"),
@@ -66,8 +86,8 @@ for i in range(len(c_list)):
     ys.append([])
     lines.append(ax.plot([], [], lw=2)[0])
     points.append(ax.plot(1,1 , 'o', markersize=5)[0])
-    vectors_v.append(ax.arrow(1, 1, 1, 1, head_width=0.1, head_length=1, ec='blue'))
-    vectors_v.append(ax.arrow(1, 1, 1, 1, head_width=0.1, head_length=1, ec='red'))
+    vectors_v.append(ax.arrow(1, 1, 1, 1, head_width=0, head_length=0, ec='blue'))
+    vectors_a.append(ax.arrow(1, 1, 1, 1, head_width=0, head_length=0, ec='red'))
     tangents.append(Rectangle((0,0),4,2))
     ax.add_patch(tangents[i])
     texts.append(ax.text(0, 0, '', horizontalalignment='left', verticalalignment='top'))
@@ -87,8 +107,8 @@ def simulate(frame):
             lines[i].set_data(xs[i][int(-(wake/dt+1)):-1].copy(), ys[i][int(-(wake/dt+1)):-1].copy())
         else:
             lines[i].set_data(xs[i].copy(), ys[i].copy())
-        vectors_v[i].set_data(x=xs[i][-1], y=ys[i][-1], dx=0.2 * car.v_x, dy=0.2 * car.v_y)
-        vectors_v[i].set_data(x=xs[i][-1], y=ys[i][-1], dx=0.2 * car.a_x, dy=0.2 * car.a_y)
+        vectors_v[i].set_data(x=xs[i][-1], y=ys[i][-1], dx=vectork_v * car.v_x, dy=vectork_v * car.v_y)
+        vectors_a[i].set_data(x=xs[i][-1], y=ys[i][-1], dx=vectork_a * car.a_x, dy=vectork_a * car.a_y)
         tangents[i].set_xy(from_centre(xs[i][-1], ys[i][-1],4,2))
         tangents[i].set_angle(np.degrees(np.atan(car.v_y/car.v_x)))
         texts[i].set_text(car.text)

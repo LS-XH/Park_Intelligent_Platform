@@ -1,4 +1,4 @@
-from car.cavcar import Cars,Car,CavGroup
+from car.cavcar import Cars,Car,CavGroup,CAV
 
 
-__all__ = ['Cars','Car','CavGroup']
+__all__ = ['Cars','CAV','Car','CavGroup']

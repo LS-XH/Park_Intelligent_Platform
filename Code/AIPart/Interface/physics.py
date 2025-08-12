@@ -73,6 +73,31 @@ class RigidBody:
         res.a_y = minabs(self.a_y, other.a_y)
         return res
 
+    def __mul__(self, other: 'RigidBody')->'RigidBody':
+        """
+                加法增强
+                :param other: 用于增强的增量
+                :return: 增强后的增量
+                """
+        res = RigidBody()
+
+        def minabs(obj, adj):
+            if adj == 0:
+                return obj
+
+            # 不能异号，只能同号（相加增强）
+            if obj * adj <= 0:
+                return obj
+
+            return obj * adj
+
+        res.p_x = minabs(self.p_x, other.p_x)
+        res.p_y = minabs(self.p_y, other.p_y)
+        res.v_x = minabs(self.v_x, other.v_x)
+        res.v_y = minabs(self.v_y, other.v_y)
+        res.a_x = minabs(self.a_x, other.a_x)
+        res.a_y = minabs(self.a_y, other.a_y)
+        return res
     def __add__(self, other: 'RigidBody'):
         """
         原地操作，相当于+=，会改变原来的变量
