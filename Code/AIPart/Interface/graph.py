@@ -216,7 +216,9 @@ class GraphBase(ABC):
         :param end_id: 终止节点id
         :return:
         """
-        if start_id >= len(self.points) or start_id >= len(self.points):
+
+        if start_id >= len(self.points) or end_id >= len(self.points):
+
             raise ValueError(f"节点 {self[start_id]} 或 {self[end_id]} 不存在")
         if self.degree[start_id, end_id] == 0:
             raise ValueError(f"节点 {self[start_id]} 到 {self[end_id]} 之间没有路段")
