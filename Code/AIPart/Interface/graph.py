@@ -6,7 +6,11 @@ import numpy as np
 class PointType(Enum):
     crossing = 0
     station = 1
+    gate = 3
 
+class GateStatus(Enum):
+    close = 0
+    open = 1
 
 class Point:
     def __init__(self, name:str, x: float, y: float, point_type: PointType = PointType.crossing):
@@ -14,6 +18,9 @@ class Point:
         self.__x = x
         self.__y = y
         self.__type = point_type
+
+        if self.__type == PointType.gate:
+            self.__gate_status = GateStatus.close # 默认门关闭
 
     @property
     def type(self) -> PointType:
@@ -28,6 +35,22 @@ class Point:
     @property
     def y(self) -> float:
         return self.__y
+    @property
+    def gate_status(self) -> GateStatus:
+        return self.__gate_status
+
+    def gate_transition(self) -> GateStatus:
+        """
+        切换门的状态，返回切换后的状态
+        """
+        # 获取当前状态的数值（0或1）
+        current_status = self.__gate_status.value
+        # 计算新状态的数值（1-0=1 或 1-1=0）
+        new_status = 1 - current_status
+        # 将新数值转换为GateStatus枚举，并更新私有变量
+        self.__gate_status = GateStatus(new_status)
+        # 返回新状态
+        return self.__gate_status
 
 class Edge:
     def __init__(self, start_id: int, end_id: int,degree: int,  limit_speed: float,  car_num: list = None):
@@ -90,6 +113,7 @@ class GraphBase(ABC):
         :return:
         """
         return self.__points
+
     @property
     def edges(self)->list[Edge]:
         """
@@ -97,6 +121,7 @@ class GraphBase(ABC):
         :return:
         """
         return self.__edges
+
     @property
     def point_name2id(self)->dict[str, int]:
         """
