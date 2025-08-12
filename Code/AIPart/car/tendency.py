@@ -2,6 +2,7 @@ from abc import abstractmethod,ABC
 from typing import Callable
 import numpy as np
 import random
+import math
 
 from Interface.physics import RigidBody
 
@@ -150,16 +151,17 @@ class CircleAvoidance(Tendency):
 
         a_x, a_y = 0, 0
         for target_car in target_cars:
-            distance = np.linalg.norm(target_car.position - obj.position,axis=1)[0]
-            if target_car.p_x != obj.p_x and target_car.p_y != obj.p_y and distance < self.__safe_distance:
+            distance = max(np.linalg.norm(target_car.position - obj.position).item(),self.__epsilon)
+            if (target_car.p_x != obj.p_x or target_car.p_y != obj.p_y or obj!=target_car) and distance < self.__safe_distance:
                 distance_k = (1 / (max(distance - self.__crash_distance, self.__epsilon)) - 1 / self.__safe_distance)
-                distance_i = (1/distance-1/self.__safe_distance)
+                distance_i = (self.__safe_distance**2/distance-self.__safe_distance)
+                distance_xi = (self.__safe_distance**2/max(abs(obj.p_x-target_car.p_x),self.__epsilon)-self.__safe_distance)
                 distance_l = (self.__safe_distance/distance-1)
+                distance_in=(1/(max(distance,self.__epsilon)))
 
-                a_x = max(self.__ax*(distance_l*(obj.p_x-target_car.p_x)-self.__bx*(target_car.v_x-obj.v_x)),a_x,key=abs)
+                a_x = max(self.__ax*distance_xi*(obj.p_x-target_car.p_x)/distance-self.__bx*(obj.v_x-target_car.v_x),a_x,key=abs)
 
-                a_y = max(self.__ay*(distance_l*(obj.p_y-target_car.p_y)-self.__by*(target_car.v_y-obj.v_y)),a_y,key=abs)
-
+                a_y = max(self.__ay*(obj.p_y-target_car.p_y)/distance-self.__by*(obj.v_y-target_car.v_y),a_y,key=abs)
         return RigidBody(
             a_x=self.__k * a_x,
             a_y=self.__k * a_y,
@@ -220,6 +222,8 @@ class Avoidance(Tendency):
             a_y=self.__k*a_y,
         )
 
+
+
 class AlignLane(Tendency):
     def __init__(
             self,
@@ -260,11 +264,11 @@ class Chatter(Tendency):
         self.__amplitude = amplitude
 
     def increment(self,obj:RigidBody,*args) ->RigidBody:
-        a_x = random.uniform(-abs(self.__amplitude), abs(self.__amplitude))
-        a_y = random.uniform(-abs(self.__amplitude), abs(self.__amplitude))
+        rd_x = random.uniform(-abs(self.__amplitude), abs(self.__amplitude))
+        rd_y = random.uniform(-abs(self.__amplitude), abs(self.__amplitude))
         return RigidBody(
-            a_x=a_x,
-            a_y=a_y
+            a_x=rd_x,
+            a_y=rd_y
         )
 
 class Brake(Tendency):
@@ -288,8 +292,25 @@ class Brake(Tendency):
         return RigidBody(
             a_x=a_x,
         )
+class Cruise(Tendency):
+    def __init__(
+            self,
+            bx:float=1,
+            cruise_speed:float=1,
+    ):
+        """
 
+        :param bx: 速度阻尼系数
+        :param cruise_speed: 巡航速度
+        """
+        super().__init__()
+        self.__bx = bx
+        self.__cruise_speed = cruise_speed
 
+    def increment(self,obj:RigidBody,*args) ->RigidBody:
+        return RigidBody(
+            a_x=0 if abs(obj.v_x)<self.__cruise_speed else -self.__bx*(abs(obj.v_x)-self.__cruise_speed)**2,
+        )
 
 
 
