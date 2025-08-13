@@ -36,9 +36,18 @@ MAX_TRAFFIC_STATUS = 10.0
 MAX_GREEN_DURATION = 120
 MIN_GREEN_DURATION = 20
 
-# 阈值（更宽松的高流量判断）
-THRESHOLD_HIGH = 0.4  # 车流量>40%即判定为高流量
-THRESHOLD_LONG_QUEUE = 0.4  # 排队长度>40%即判定为长排队
+# 新增：状态区间阈值（基于最大值比例）
+LOWEST_THRESHOLD = 1/3  # 极低：<0.333
+LOW_THRESHOLD = 0.4     # 偏低：0.333~0.4
+MID_LOW = 0.4           # 居中：0.4~0.6
+MID_HIGH = 0.6
+HIGH_LOW = 0.6          # 偏高：0.6~0.666
+HIGH_HIGH = 2/3         # 极高：>0.666
+HIGHEST_THRESHOLD = 2/3
+
+# 阈值
+THRESHOLD_HIGH = 0.6  # 车流量>60%即判定为高流量
+THRESHOLD_LONG_QUEUE = 0.6  # 排队长度>60%即判定为长排队
 
 
 class TrafficLightEnv:
@@ -100,64 +109,138 @@ class TrafficLightEnv:
         ])
 
     def _calculate_reward(self, action: float) -> float:
+        # 提取基础参数（所有场景共用）
+        # 时间特征
         is_peak = 1 if self.hour in list(range(7, 10)) + list(range(17, 20)) else 0
+        # 标准化状态特征
         norm_car = self.car_flow / MAX_CAR_FLOW
         norm_queue = self.queue_length / MAX_QUEUE_LENGTH
+        norm_people = self.people_flow / MAX_PEOPLE_FLOW
+        weather_coeff = WEATHER_COEFFICIENTS[self.weather]
+        norm_status = self.traffic_status / MAX_TRAFFIC_STATUS
+        norm_green = self.green_duration / MAX_GREEN_DURATION
+        # 排队改善计算
+        queue_improve = self.prev_norm_queue - norm_queue
 
-        # 基础奖励：拥堵越严重，基础奖励越低
-        base_reward = -20 * norm_car - 20 * norm_queue  # 放大拥堵惩罚
+        # 基础奖励（核心惩罚项）
+        base_reward = -20 * norm_car - 20 * norm_queue  # 车流量和排队越长，基础惩罚越高
 
-        # 核心修正：高峰期强制策略
+        #  分场景核心策略奖励（高峰/非高峰）
         if is_peak:
-            # 高峰期高车流量或长排队时
+            # 高峰期策略：优先处理拥堵
             if norm_car > THRESHOLD_HIGH or norm_queue > THRESHOLD_LONG_QUEUE:
-                # 增加绿灯：大幅奖励
+                # 拥堵时：鼓励增加绿灯，惩罚减少
                 if action == ACTION_LARGE_ADD:
-                    base_reward += 100  # 压倒性奖励
-                elif action == ACTION_SMALL_ADD:
                     base_reward += 60
-                # 减少绿灯：严厉惩罚
+                elif action == ACTION_SMALL_ADD:
+                    base_reward += 30
                 elif action == ACTION_SMALL_REDUCE:
-                    base_reward -= 150  # 惩罚远大于奖励
+                    base_reward -= 80
                 elif action == ACTION_LARGE_REDUCE:
-                    base_reward -= 200  # 最重惩罚
-            # 高峰期低流量时
+                    base_reward -= 100
             else:
+                # 非拥堵时：鼓励减少绿灯，惩罚增加
                 if action in [ACTION_SMALL_REDUCE, ACTION_LARGE_REDUCE]:
                     base_reward += 30
                 elif action in [ACTION_LARGE_ADD, ACTION_SMALL_ADD]:
                     base_reward -= 30
 
-        # 非高峰期策略
         else:
-            if norm_car < 0.3 and norm_queue < 0.3:
-                # 低流量时减少绿灯奖励
+            # 非高峰期策略：按综合状态（车流量+排队）分区间处理
+            combined_state = max(norm_car, norm_queue)
+
+            if combined_state < LOWEST_THRESHOLD:
+                # 极低状态：鼓励大幅减少绿灯
                 if action == ACTION_LARGE_REDUCE:
-                    base_reward += 80
+                    base_reward += 100
                 elif action == ACTION_SMALL_REDUCE:
                     base_reward += 50
-                # 低流量时增加绿灯惩罚
-                elif action in [ACTION_LARGE_ADD, ACTION_SMALL_ADD]:
+                elif action == ACTION_NO_CHANGE:
+                    base_reward -= 30
+                else:  # 增加动作惩罚
+                    base_reward -= 80
+
+            elif LOWEST_THRESHOLD <= combined_state < LOW_THRESHOLD:
+                # 偏低状态：鼓励小幅减少绿灯
+                if action == ACTION_SMALL_REDUCE:
+                    base_reward += 80
+                elif action == ACTION_LARGE_REDUCE:
+                    pass
+                elif action == ACTION_NO_CHANGE:
+                    base_reward -= 20
+                else:  # 增加动作惩罚
                     base_reward -= 60
-            # 非高峰期高流量
-            elif norm_car > 0.6 or norm_queue > 0.6:
-                if action in [ACTION_LARGE_ADD, ACTION_SMALL_ADD]:
-                    base_reward += 50
-                elif action in [ACTION_SMALL_REDUCE, ACTION_LARGE_REDUCE]:
+
+            elif MID_LOW <= combined_state <= MID_HIGH:
+                # 居中状态：优先不调整，其次小幅调整
+                if action == ACTION_NO_CHANGE:
+                    base_reward += 80
+                elif action in [ACTION_SMALL_ADD, ACTION_SMALL_REDUCE]:
+                    pass
+                else:  # 大幅调整惩罚
+                    base_reward -= 80
+
+            elif HIGH_LOW <= combined_state < HIGH_HIGH:
+                # 偏高状态：鼓励小幅增加绿灯
+                if action == ACTION_SMALL_ADD:
+                    base_reward += 80
+                elif action == ACTION_LARGE_ADD:
+                    pass
+                elif action == ACTION_NO_CHANGE:
+                    base_reward -= 20
+                else:  # 减少动作惩罚
                     base_reward -= 50
 
-        # 排队改善奖励
-        queue_improve = self.prev_norm_queue - norm_queue
-        if queue_improve > 0:
-            base_reward += 30 * queue_improve  # 放大改善奖励
-        self.prev_norm_queue = norm_queue
+            else:  # combined_state >= HIGHEST_THRESHOLD
+                # 极高状态：鼓励大幅增加绿灯
+                if action == ACTION_LARGE_ADD:
+                    base_reward += 80
+                elif action == ACTION_SMALL_ADD:
+                    pass
+                elif action == ACTION_NO_CHANGE:
+                    base_reward -= 30
+                else:  # 减少动作惩罚
+                    base_reward -= 80
 
-        # 边界惩罚
+        # 4. 通用奖励因素（所有场景叠加）
+        # 4.1 排队改善奖励（动作对排队的影响）
+        if queue_improve > 0:
+            # 排队减少：增加奖励（正向动作奖励更高）
+            base_reward += 20 * queue_improve if action >= 0 else 10 * queue_improve
+        elif queue_improve < 0:
+            # 排队增加：减少奖励
+            base_reward += 15 * queue_improve
+        self.prev_norm_queue = norm_queue  # 更新历史排队
+
+        # 4.2 人流量影响（人流量大时抑制绿灯过长）
+        if norm_people > 0.5:
+            if action in [ACTION_LARGE_ADD, ACTION_SMALL_ADD]:
+                base_reward -= 80
+
+        # 4.3 天气影响（恶劣天气鼓励延长绿灯）
+        if weather_coeff > 1.2:
+            if action in [ACTION_LARGE_ADD, ACTION_SMALL_ADD]:
+                base_reward += 50
+
+        # 4.4 交通状态影响（状态差时避免缩短绿灯）
+        if norm_status > 0.6:
+            if action in [ACTION_SMALL_REDUCE, ACTION_LARGE_REDUCE]:
+                base_reward -= 40
+
+        # 4.5 绿灯时长边界惩罚（避免过短或过长）
+        if norm_green < 0.2:  # 绿灯过短（<24秒）
+            if action in [ACTION_SMALL_REDUCE, ACTION_LARGE_REDUCE]:
+                base_reward -= 100
+        elif norm_green > 0.8:  # 绿灯过长（>96秒）
+            if action in [ACTION_LARGE_ADD, ACTION_SMALL_ADD]:
+                base_reward -= 100
+
+        # 4.6 动作越界惩罚（超出最小/最大绿灯时长）
         if (self.green_duration + action < MIN_GREEN_DURATION and action < 0) or \
                 (self.green_duration + action > MAX_GREEN_DURATION and action > 0):
-            base_reward -= 50
+            base_reward -= 100
 
-        return base_reward  # 不设上限，确保奖励差异足够大
+        return base_reward
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool]:
         chosen_action = ACTIONS[action]
@@ -170,12 +253,19 @@ class TrafficLightEnv:
         # 更新状态（强化动作影响）
         self.green_duration = new_duration
         # 增加绿灯显著减少排队，减少绿灯显著增加排队
-        queue_change = -chosen_action * 0.5  # +20→-10米，-20→+10米
-        self.queue_length = int(max(0, min(MAX_QUEUE_LENGTH, self.queue_length + queue_change + random.randint(-2, 2))))
         self.car_flow = max(0, min(MAX_CAR_FLOW, self.car_flow + random.uniform(-5, 5)))
         self.hour = (self.hour + 1) % 24
         self.traffic_status = max(0, min(MAX_TRAFFIC_STATUS,
                                          self.traffic_status - chosen_action * 0.3 + random.uniform(-0.5, 0.5)))
+        # 在step函数中修改排队长度更新逻辑：
+        queue_change = -chosen_action * 0.5  # 原逻辑保留
+        # 若动作是0，减少随机波动的正向影响（让排队更难随机减少）
+        if chosen_action == 0:
+            # 随机波动偏向增加（-1~2 → -2~1），削弱无动作时的排队改善
+            random_fluct = random.randint(-1, 1)
+        else:
+            random_fluct = random.randint(-2, 2)
+        self.queue_length = int(max(0, min(MAX_QUEUE_LENGTH, self.queue_length + queue_change + random_fluct)))
 
         # 相位切换
         done = self.green_duration >= MAX_GREEN_DURATION
@@ -209,12 +299,12 @@ class DQNAgent:
     def __init__(self, state_size: int, action_size: int):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=20000)
-        self.gamma = 0.95
+        self.memory = deque(maxlen=30000)  # 增大经验池，存储更多状态样本
+        self.gamma = 0.97  # 稍微提高折扣因子，更关注长期奖励
         self.epsilon = 1.0
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
-        self.learning_rate = 0.001
+        self.epsilon_decay = 0.997  # 减缓探索衰减，延长学习时间
+        self.learning_rate = 0.0005  # 降低学习率，提高稳定性
 
         self.model = DQN(state_size, action_size).to(device)
         self.target_model = DQN(state_size, action_size).to(device)
@@ -261,7 +351,7 @@ class DQNAgent:
             self.epsilon *= self.epsilon_decay
 
 
-def train_agent(episodes=3000, batch_size=64):
+def train_agent(episodes=20000, batch_size=128):
     env = TrafficLightEnv()
     state_size = 8
     agent = DQNAgent(state_size, ACTION_SIZE)
@@ -289,7 +379,7 @@ def train_agent(episodes=3000, batch_size=64):
 
         if total_reward > best_reward:
             best_reward = total_reward
-            torch.save(agent.model.state_dict(), "Traffic_Light_PeakFix.pth")
+            torch.save(agent.model.state_dict(), "Traffic_Light5.pth")
 
     print(f"最佳奖励: {best_reward:.2f}, 最终平均: {np.mean(rewards_history[-100:]):.2f}")
     return agent
@@ -323,13 +413,18 @@ def validate_agent(agent, num_tests=200):
 
 
 def Traffic_Control(car_flow, queue_length, people_flow, weather, traffic_status, hour):
+    """
+    params: car_flow: float （需放缩）
+    params: queue_length: float 车流量（速度为零的车辆 * 4(假设一辆车的长为4m)）
+    params: people_flow: float 人流量（需放缩）
+    params: weather: str 天气状况
+    params: traffic_status: int 交通状态，通过上面参数计算得到（设计公式自己计算，用来给我们微调用的）
+    return: 返回一个绿灯调整的时间，红灯时间 = 周期 - 绿灯时间
+    """
     env = TrafficLightEnv()
-    """
-    红绿灯控制函数，返回‘绿灯’需要增加（正数）或减少（负数）的秒数，相应的红灯就需要减短多少
-    """
     try:
         model = DQN(8, ACTION_SIZE).to(device)
-        model.load_state_dict(torch.load("Traffic_Light_PeakFix.pth", map_location=device))
+        model.load_state_dict(torch.load("Traffic_Light5.pth", map_location=device))
         model.eval()
     except:
         print("使用默认策略")
@@ -342,8 +437,8 @@ def Traffic_Control(car_flow, queue_length, people_flow, weather, traffic_status
     env.set_state(car_flow, queue_length, people_flow, weather, traffic_status, hour)
     state = env._get_state()
     print("\n状态详情:")
-    print(f"标准化车流量: {state[0]:.2f} (>0.4为高)")
-    print(f"标准化排队: {state[1]:.2f} (>0.4为长)")
+    print(f"标准化车流量: {state[0]:.2f} ")
+    print(f"标准化排队: {state[1]:.2f}")
     print(f"是否高峰期: {state[7]}")
 
     with torch.no_grad():
@@ -356,21 +451,4 @@ def Traffic_Control(car_flow, queue_length, people_flow, weather, traffic_status
 
     return ACTIONS[action_idx]
 
-# 使用范例
-# if __name__ == "__main__":
 
-#     # 高峰期测试（80%车流量，60%排队）
-
-#     peak_result = Traffic_Control(
-#         car_flow=80, queue_length=60, people_flow=30,
-#         weather='rainy', traffic_status=7.5, hour=8
-#     )
-#     print(f"\n高峰期控制结果: {peak_result}秒 (预期+20或+10)")
-#     print("花费时间：",time.time() - t)
-#     tt = time.time()
-#     low_result = Traffic_Control(
-#         car_flow=25, queue_length=25, people_flow=12,
-#         weather='sunny', traffic_status=3, hour=14
-#     )
-#     print(f"\n低峰期控制结果: {low_result}秒 (预期-20或-10)")
-#     print("花费时间：", time.time() - tt)
