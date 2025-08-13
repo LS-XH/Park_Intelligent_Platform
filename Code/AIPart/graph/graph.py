@@ -6,7 +6,7 @@ from enum import Enum
 import os
 import numpy as np
 import json
-from graph.common_func import generate_cars_list, generate_people_list
+from Code.AIPart.graph.common_func import generate_cars_list, generate_people_list
 
 
 #from .information import weather,traffic_flow,human_flow,accident_rate
@@ -141,7 +141,6 @@ class Graph(GraphBase):
                     # 这里假设存在清除车辆的方法，实际实现需根据车辆存储方式调整
                     # 示例：若车辆信息存储在某个属性中，如self.cars，则清空
                     pass
-
 
     def upgrade_weight(self):
         pass

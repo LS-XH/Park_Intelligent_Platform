@@ -8,6 +8,10 @@ class PointType(Enum):
     station = 1
     gate = 3
 
+class DoorStatus(Enum):
+    close = 0
+    open = 1
+
 class GateStatus(Enum):
     close = 0
     open = 1
@@ -21,6 +25,9 @@ class Point:
 
         if self.__type == PointType.gate:
             self.__gate_status = GateStatus.close # 默认门关闭
+        else:
+            self.__door_status =  DoorStatus.open # 默认节点门闸开放
+
 
     @property
     def type(self) -> PointType:
@@ -39,18 +46,30 @@ class Point:
     def gate_status(self) -> GateStatus:
         return self.__gate_status
 
+    @property
+    def door_status(self) -> DoorStatus:
+        return self.__door_status
+
     def gate_transition(self) -> GateStatus:
         """
         切换门的状态，返回切换后的状态
         """
         # 获取当前状态的数值（0或1）
         current_status = self.__gate_status.value
-        # 计算新状态的数值（1-0=1 或 1-1=0）
         new_status = 1 - current_status
         # 将新数值转换为GateStatus枚举，并更新私有变量
         self.__gate_status = GateStatus(new_status)
         # 返回新状态
         return self.__gate_status
+
+    def door_transition(self) -> DoorStatus:
+        """
+        更改节点开闭状态
+        """
+        current_status = self.__door_status.value
+        new_status = 1 - current_status
+        self.__door_status = DoorStatus(new_status)
+        return self.__door_status
 
 class Edge:
     def __init__(self, start_id: int, end_id: int,degree: int,  limit_speed: float,  car_num: list = None):
