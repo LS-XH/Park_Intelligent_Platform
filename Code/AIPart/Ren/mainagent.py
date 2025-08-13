@@ -2,10 +2,9 @@ import numpy as np
 import torch
 
 from Code.AIPart.Interface.people import PersonBase
-from Code.AIPart.Ren.model import emergency
 from model import ObstacleGenerator, AgentGroup
 
-
+map_path = "testmap.py"
 
 
 
@@ -56,33 +55,49 @@ class Crowd(PersonBase):
         """
         return None, None, None
 
-    def __init__(self, position:list, graph:any ):
+    def __init__(self, position:list, graph:any, num_agents=1000):
         self.pos = position
         self.graph=graph
         self.obstacle = self.make_obs()
-        num_agents = 100
-        self.agents = self.create_agents(num_agents, self.obstacle.map_matrix, self.obstacle.intersection_id_map, self.obstacle)
+        self.num_agents = num_agents
+        self.agents = self.create_agents(
+            num_agents,
+            self.obstacle.map_matrix,
+            self.obstacle.intersection_id_map,
+            self.obstacle
+        )
 
 
 
     def simulate(self, happened: list = None, trafficlight: list = None):
+        """
+
+        :param happened: [((x,y), str), ...]
+        :param trafficlight:
+        :return:
+        """
         emergency = self.get_emergency(happened=happened)
         eme_pos = []
         eme_lev = []
-        for pos, lev in emergency:
-            eme_pos.append(pos)
-            eme_lev.append(lev)
+        if emergency:
+            for pos, lev in emergency:
+                eme_pos.append(pos)
+                eme_lev.append(lev)
         self.agents.move_towards_target((eme_pos, eme_lev), trafficlight)
         pass
 
 
-
-
     def get_pos(self, node_id: int, ranges: int = 30) -> list:
+
         pass
 
     @property
+    def density(self) -> float:
+        return self.agents.get_density().T
+
+    @property
     def position(self) -> list:
+        positions = self.agents.positions.cpu().numpy()
         return []
 
 
