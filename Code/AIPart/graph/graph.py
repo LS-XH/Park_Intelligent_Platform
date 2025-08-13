@@ -26,17 +26,17 @@ class Graph(GraphBase):
 
 
         # 位置矩阵
-        self.__positions = np.empty((0,2))
+        self.__positions = np.empty((0,2),dtype=float)
         # 长度矩阵
-        self.__length = np.empty((0,0))
+        self.__length = np.empty((0,0),dtype=float)
         # 权重矩阵
-        self.__weight = np.empty((0,0))
+        self.__weight = np.empty((0,0),dtype=float)
         # 度矩阵
         self.__degree = np.empty((0,0))
         # 限速矩阵
-        self.__limit_speed = np.empty((0,0))
+        self.__limit_speed = np.empty((0,0),dtype=float)
         #红绿灯矩阵
-        self.__traffic_light = np.empty((0,0))
+        self.__traffic_light = np.empty((0,0),dtype=float)
         self.__tick = 0
 
         #初始化&载入点边
@@ -91,22 +91,18 @@ class Graph(GraphBase):
         :param end_id: 目标节点id，即为红绿灯所在路口id
         :return: 一个元组，包含:（红绿灯当前状态颜色，剩余时间）
         """
-        # 检查输入参数
-        self._check_edge(start_id, end_id)
-
-        # 此路口灯数
-        light_count = np.count_nonzero(self.__degree[:, end_id])
-        # 截断求余数后，窗口期时间，如果为负数，就是红灯（露头时间长度）
-        light_time = self.traffic_light[start_id,end_id]%(self.traffic_light[end_id,end_id]-self.__tick)
+        if end_id!=start_id: self._check_edge(start_id, end_id)
+        light_time = self.traffic_light[start_id,end_id]%(self.traffic_light[end_id,end_id]-self.__tick)        # 截断求余数后，窗口期时间，如果为负数，就是红灯（露头时间长度）
         # 判断是否处于窗口（去下不取上）
-        if ALLOW_LIGHT_TIMES < light_time:return TrafficLightStatue.red,-light_time
-        if 0 <= light_time < GREEN_LIGHT_TIMES:return TrafficLightStatue.green, GREEN_LIGHT_TIMES-light_time
-        elif GREEN_LIGHT_TIMES <= light_time < ALLOW_LIGHT_TIMES:return TrafficLightStatue.yellow, ALLOW_LIGHT_TIMES-light_time
+        allow_t=self.get_light(start_id,end_id)
+        if allow_t <= light_time:return TrafficLightStatue.red,(self.traffic_light[end_id,end_id]-self.__tick)-light_time
+        if 0 <= light_time < allow_t-YELLOW_LIGHT_TIMES:return TrafficLightStatue.green, allow_t-YELLOW_LIGHT_TIMES-light_time
+        if allow_t-YELLOW_LIGHT_TIMES <= light_time < allow_t:return TrafficLightStatue.yellow, allow_t-light_time
 
     def control_light(self,start_id: int, end_id: int, add_green_time:float):
         # 检查输入参数
-        self._check_edge(start_id, end_id)
-        self.__traffic_light[start_id:,end_id]+=add_green_time
+        if end_id!=start_id: self.__traffic_light[start_id:,end_id]+=add_green_time
+        else: self.__traffic_light[start_id,end_id]+=add_green_time
 
     def get_light(self, start_id: int, end_id: int) -> float:
         """
@@ -115,15 +111,17 @@ class Graph(GraphBase):
         :param end_id: 目标节点id，即为红绿灯所在路口id
         :return:
         """
-        np.where(self.__degree != 0, 1, 0) * self.__traffic_light
-        column = self.__traffic_light[:start_id,end_id]
-        accord = [l for l in reversed(column) if l != 0]
-        return self.__traffic_light[start_id,end_id].item() - (0 if len(accord)==0 else accord[0])
+        if end_id!=start_id: self._check_edge(start_id, end_id)
+        end = self.__traffic_light[start_id,end_id].item()
+        column = np.hstack((np.sort(((np.where(self.__degree != 0, 1, 0)+np.diag(np.diag(self.__degree)+1)) * self.__traffic_light)[:, end_id],axis = 0)[::-1],0))
+        return (end-column[np.where(column == end)[0][0]+1]).item()
+        # accord = [l for l in reversed((np.where(self.__degree != 0, 1, 0) * self.__traffic_light)[:start_id,end_id]) if l != 0]
+        # return self.__traffic_light[start_id,end_id].item() - (0 if len(accord)==0 else accord[0])
 
 
     def simulate_light(self, dt=0.1)->None:
         self.__tick += dt
-        self.__traffic_light -= dt
+        self.__traffic_light += dt
 
     def upgrade_weight(self):
         pass
@@ -162,7 +160,7 @@ class Graph(GraphBase):
         self.__limit_speed += self.__limit_speed.T
 
         # 初始化traffic_light
-        self.__traffic_light = np.zeros((len(self.points), len(self.points)), dtype=int)
+        self.__traffic_light = np.zeros((len(self.points), len(self.points)), dtype=float)
         for end_id,end_point in enumerate(self.points):
             index = 1
             for start_id,start_point in enumerate(self.points):
