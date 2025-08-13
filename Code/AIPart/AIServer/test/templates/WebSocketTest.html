@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket状态码测试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .connection-status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.stop {
+            background-color: #dc3545;
+        }
+        button.stop:hover {
+            background-color: #c82333;
+        }
+        .response {
+            height: 400px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+        .status-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .status-group h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket状态码测试工具</h1>
+
+        <div class="connection-status disconnected" id="connectionStatus">
+            未连接到服务器
+        </div>
+
+        <div class="status-group">
+            <h3>连接控制</h3>
+            <button id="connectBtn">连接到服务器</button>
+            <button id="disconnectBtn" disabled>断开连接</button>
+        </div>
+
+        <div class="status-group">
+            <h3>静态数据测试 (单次请求)</h3>
+            <div class="controls">
+                <button data-status="0">状态码 0 - 通信测试</button>
+                <button data-status="1">状态码 1 - 获取天气数据</button>
+                <button data-status="2">状态码 2 - 修改天气数据</button>
+                <button data-status="9">状态码 9 - 智能模块控制</button>
+                <button data-status="10">状态码 10 - 寻路模块</button>
+                <button data-status="11">状态码 11 - 突发事件设置</button>
+                <button data-status="12">状态码 12 - 启动模拟进程</button>
+            </div>
+        </div>
+
+        <div class="status-group">
+            <h3>实时数据测试 (持续推送)</h3>
+            <div class="controls">
+                <button data-status="3">状态码 3 - 启动全局数据推送</button>
+                <button data-status="4" class="stop">状态码 4 - 停止全局数据推送</button>
+                <button data-status="5">状态码 5 - 启动节点数据推送</button>
+                <button data-status="6">状态码 6 - 启动路段数据推送</button>
+                <button data-status="7">状态码 7 - 启动节点风险预测</button>
+                <button data-status="8">状态码 8 - 启动路段风险预测</button>
+                <button data-status="13">状态码 13 - 启动人口密度推送</button>
+            </div>
+        </div>
+
+        <h3>响应日志</h3>
+        <div class="response" id="responseLog"></div>
+    </div>
+
+    <script>
+        let websocket;
+        // 增加状态跟踪变量，记录模拟进程是否在运行
+        let isProcessRunning = false;
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const responseLog = document.getElementById('responseLog');
+        const statusButtons = document.querySelectorAll('button[data-status]');
+
+        // 连接到WebSocket服务器
+        connectBtn.addEventListener('click', () => {
+            // 假设服务器运行在本地5566端口
+            const wsUri = 'ws://' + window.location.hostname + ':5566';
+
+            try {
+                websocket = new WebSocket(wsUri);
+
+                websocket.onopen = function(evt) {
+                    logResponse('连接已建立', 'system');
+                    connectionStatus.className = 'connection-status connected';
+                    connectionStatus.textContent = '已连接到服务器';
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                };
+
+                websocket.onclose = function(evt) {
+                    logResponse('连接已关闭', 'system');
+                    connectionStatus.className = 'connection-status disconnected';
+                    connectionStatus.textContent = '未连接到服务器';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    // 连接关闭时重置状态
+                    resetProcessButton();
+                };
+
+                websocket.onmessage = function(evt) {
+                    logResponse('收到消息: ' + evt.data, 'response');
+                };
+
+                websocket.onerror = function(evt) {
+                    logResponse('错误: ' + evt.data, 'error');
+                };
+            } catch (e) {
+                logResponse('连接错误: ' + e, 'error');
+            }
+        });
+
+        // 断开连接
+        disconnectBtn.addEventListener('click', () => {
+            if (websocket) {
+                websocket.close();
+            }
+        });
+
+        // 重置进程按钮状态
+        function resetProcessButton() {
+            isProcessRunning = false;
+            const processBtn = document.querySelector('button[data-status="12"]');
+            if (processBtn) {
+                processBtn.textContent = '状态码 12 - 启动模拟进程';
+                processBtn.classList.remove('stop');
+            }
+        }
+
+        // 状态码按钮点击事件
+        statusButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                    logResponse('请先连接到服务器', 'error');
+                    return;
+                }
+
+                const status = parseInt(button.getAttribute('data-status'));
+                const message = { status: status };
+
+                // 处理状态码12的启停切换
+                if (status === 12) {
+                    // 切换运行状态
+                    isProcessRunning = !isProcessRunning;
+
+                    if (isProcessRunning) {
+                        // 启动状态 - 包含time字段
+                        message.message = {
+                            process: "start",
+                            time: 1
+                        };
+                        // 更新按钮文本和样式
+                        button.textContent = '状态码 12 - 停止模拟进程';
+                        button.classList.add('stop');
+                    } else {
+                        // 停止状态 - 不包含time字段
+                        message.message = {
+                            process: "stop"
+                        };
+                        // 更新按钮文本和样式
+                        button.textContent = '状态码 12 - 启动模拟进程';
+                        button.classList.remove('stop');
+                    }
+                }
+                // 其他状态码的处理逻辑
+                else if (status === 2) {
+                    message.data = {
+                        temperature: 25,
+                        wind: 10,
+                        airQuality: 80,
+                        rain: 0
+                    };
+                } else if (status === 10) {
+                    message.data = {
+                        start: "叠翠屏",
+                        end: "月栖滩"
+                    };
+                } else if (status === 11) {
+                    message.data = {
+                        location: "节点A",
+                        event: "车祸"
+                    };
+                }
+
+                const jsonMessage = JSON.stringify(message);
+                websocket.send(jsonMessage);
+                logResponse('发送消息: ' + jsonMessage, 'request');
+            });
+        });
+
+        // 记录响应日志
+        function logResponse(message, type = 'log') {
+            const timestamp = new Date().toISOString();
+            const logEntry = document.createElement('div');
+
+            switch(type) {
+                case 'system':
+                    logEntry.style.color = '#6c757d';
+                    break;
+                case 'request':
+                    logEntry.style.color = '#007bff';
+                    break;
+                case 'response':
+                    logEntry.style.color = '#28a745';
+                    break;
+                case 'error':
+                    logEntry.style.color = '#dc3545';
+                    break;
+            }
+
+            try {
+                // 尝试格式化JSON
+                const parsed = JSON.parse(message.split(': ').slice(1).join(': '));
+                message = message.split(': ')[0] + ': ' + JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                // 不是JSON，不处理
+            }
+
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            responseLog.appendChild(logEntry);
+            responseLog.scrollTop = responseLog.scrollHeight;
+        }
+    </script>
+</body>
+</html>

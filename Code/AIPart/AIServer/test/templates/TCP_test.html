@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Server 功能测试页面</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        success: '#52C41A',
+                        danger: '#FF4D4F',
+                        warning: '#FAAD14',
+                        info: '#1890FF',
+                        dark: '#1F2329',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'card': '0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)',
+                        'card-hover': '0 10px 20px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04)',
+                    }
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-bg {
+                transition: background-color 0.3s ease;
+            }
+            .transition-transform {
+                transition: transform 0.2s ease;
+            }
+            .hover-lift {
+                @apply hover:-translate-y-0.5 transition-transform;
+            }
+            .card-gradient {
+                background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(245,247,250,1) 100%);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 头部区域 -->
+        <header class="mb-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-2">
+                        <i class="fa fa-server mr-2"></i>AI Server 功能测试平台
+                    </h1>
+                    <p class="text-gray-500">WebSocket通信与数据交互测试工具</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <div class="flex items-center space-x-3">
+                        <div id="connectionStatus" class="px-4 py-2 rounded-md bg-danger/10 text-danger font-medium flex items-center">
+                            <i class="fa fa-circle text-xs mr-2 animate-pulse"></i>未连接
+                        </div>
+                        <button id="connectBtn" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center">
+                            <i class="fa fa-plug mr-2"></i>连接服务器
+                        </button>
+                        <button id="disconnectBtn" disabled class="px-4 py-2 bg-gray-300 text-gray-600 rounded-md cursor-not-allowed flex items-center">
+                            <i class="fa fa-unplug mr-2"></i>断开连接
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- 状态码0：通信测试 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">0</span>
+                        通信测试
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <button id="testConnBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-paper-plane mr-2"></i>发送测试请求
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('status0Response')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="status0Response" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 状态码1-2：天气数据 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">1-2</span>
+                        天气数据
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <button id="getWeatherBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-cloud mr-2"></i>获取天气数据
+                        </button>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                        <h3 class="font-medium mb-3">修改天气数据</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">温度 (°C)</label>
+                                <input type="number" step="0.1" id="tempInput" value="25.5" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">风向</label>
+                                <input type="text" id="windInput" value="南风" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 mb-1">空气质量</label>
+                                <input type="number" step="0.1" id="airInput" value="75.2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button id="setWeatherBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                                <i class="fa fa-save mr-2"></i>提交修改
+                            </button>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('weatherResponse')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="weatherResponse" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 状态码3-4：全局车流人流 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">3-4</span>
+                        全局车流、人流、拥挤程度
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <button id="startGlobalBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-play mr-2"></i>开始接收
+                        </button>
+                        <button id="stopGlobalBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-stop mr-2"></i>停止接收
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('globalResponse')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="globalResponse" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 状态码5-6：节点数据 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">5-6</span>
+                        节点数据
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <input type="text" class="id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary" id="nodeIdInput" placeholder="节点ID" value="node1">
+                        <button id="startNodeBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-play mr-2"></i>开始接收
+                        </button>
+                        <button id="stopNodeBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-stop mr-2"></i>停止接收
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('nodeResponse')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="nodeResponse" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 状态码7-8：路段数据 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">7-8</span>
+                        路段数据
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <input type="text" class="id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary" id="roadIdInput" placeholder="路段ID" value="road1">
+                        <button id="startRoadBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-play mr-2"></i>开始接收
+                        </button>
+                        <button id="stopRoadBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-stop mr-2"></i>停止接收
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('roadResponse')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="roadResponse" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 状态码9-10：节点风险预测 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">9-10</span>
+                        节点风险预测
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <input type="text" class="id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary" id="nodeRiskIdInput" placeholder="节点ID" value="node1">
+                        <button id="startNodeRiskBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-play mr-2"></i>开始接收
+                        </button>
+                        <button id="stopNodeRiskBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-stop mr-2"></i>停止接收
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('nodeRiskResponse')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="nodeRiskResponse" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 状态码11-12：路段风险预测 -->
+            <div class="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300 overflow-hidden lg:col-span-2">
+                <div class="p-5 border-b border-gray-100">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <span class="inline-flex items-center justify-center w-6 h-6 bg-info/10 text-info rounded-full text-sm mr-2">11-12</span>
+                        路段风险预测
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex flex-wrap gap-3 mb-4">
+                        <input type="text" class="id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary" id="roadRiskIdInput" placeholder="路段ID" value="road1">
+                        <button id="startRoadRiskBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-play mr-2"></i>开始接收
+                        </button>
+                        <button id="stopRoadRiskBtn" disabled class="px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed hover-lift">
+                            <i class="fa fa-stop mr-2"></i>停止接收
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <div class="text-sm text-gray-500 mb-2 flex justify-between">
+                            <span>响应信息</span>
+                            <button onclick="clearResponse('roadRiskResponse')" class="text-gray-400 hover:text-gray-600">
+                                <i class="fa fa-trash-o"></i> 清空
+                            </button>
+                        </div>
+                        <div id="roadRiskResponse" class="w-full h-48 p-4 bg-gray-50 rounded-lg border border-gray-200 font-mono text-sm overflow-y-auto resize-none focus:outline-none focus:ring-1 focus:ring-primary">
+                            响应将显示在这里...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>© 2025 AI Server 测试平台 | 实时数据交互测试工具</p>
+        </footer>
+    </div>
+
+    <script>
+        let ws;
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+
+        // 连接服务器
+        connectBtn.addEventListener('click', () => {
+            // 连接到本地WebSocket服务器
+            ws = new WebSocket('ws://192.168.1.167:5566');
+
+            // 连接成功
+            ws.onopen = () => {
+                connectionStatus.innerHTML = '<i class="fa fa-circle text-xs mr-2 text-success"></i>已连接';
+                connectionStatus.className = 'px-4 py-2 rounded-md bg-success/10 text-success font-medium flex items-center';
+                connectBtn.disabled = true;
+                connectBtn.className = 'px-4 py-2 bg-gray-300 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                disconnectBtn.disabled = false;
+                disconnectBtn.className = 'px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 hover-lift flex items-center';
+                enableAllButtons(true);
+                logResponse('系统消息: 成功连接到服务器', 'status0Response');
+            };
+
+            // 接收消息
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('收到消息:', data);
+
+                    // 根据状态码分发到对应的显示区域
+                    switch(data.status) {
+                        case 0:
+                            logResponse(data, 'status0Response');
+                            break;
+                        case 1:
+                        case 2:
+                            logResponse(data, 'weatherResponse');
+                            break;
+                        case 3:
+                        case 4:
+                            logResponse(data, 'globalResponse');
+                            break;
+                        case 5:
+                        case 6:
+                            logResponse(data, 'nodeResponse');
+                            break;
+                        case 7:
+                        case 8:
+                            logResponse(data, 'roadResponse');
+                            break;
+                        case 9:
+                        case 10:
+                            logResponse(data, 'nodeRiskResponse');
+                            break;
+                        case 11:
+                        case 12:
+                            logResponse(data, 'roadRiskResponse');
+                            break;
+                        default:
+                            logResponse(data, 'status0Response');
+                    }
+                } catch (e) {
+                    // 非JSON格式的消息
+                    logResponse(event.data, 'status0Response');
+                }
+            };
+
+            // 连接关闭
+            ws.onclose = () => {
+                connectionStatus.innerHTML = '<i class="fa fa-circle text-xs mr-2 animate-pulse"></i>已断开';
+                connectionStatus.className = 'px-4 py-2 rounded-md bg-danger/10 text-danger font-medium flex items-center';
+                connectBtn.disabled = false;
+                connectBtn.className = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center';
+                disconnectBtn.disabled = true;
+                disconnectBtn.className = 'px-4 py-2 bg-gray-300 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                enableAllButtons(false);
+                // 重置所有运行状态的按钮
+                toggleGlobalButtons(false);
+                toggleNodeButtons(false);
+                toggleRoadButtons(false);
+                toggleNodeRiskButtons(false);
+                toggleRoadRiskButtons(false);
+                logResponse('系统消息: 与服务器的连接已断开', 'status0Response');
+            };
+
+            // 连接错误
+            ws.onerror = (error) => {
+                logResponse(`系统错误: ${error}`, 'status0Response');
+            };
+        });
+
+        // 断开连接
+        disconnectBtn.addEventListener('click', () => {
+            if (ws) {
+                ws.close();
+            }
+        });
+
+        // 状态码0：通信测试
+        document.getElementById('testConnBtn').addEventListener('click', () => {
+            sendMessage({ status: 0 });
+        });
+
+        // 状态码1：获取天气数据
+        document.getElementById('getWeatherBtn').addEventListener('click', () => {
+            sendMessage({ status: 1 });
+        });
+
+        // 状态码2：设置天气数据
+        document.getElementById('setWeatherBtn').addEventListener('click', () => {
+            const temp = parseFloat(document.getElementById('tempInput').value);
+            const wind = document.getElementById('windInput').value;
+            const air = parseFloat(document.getElementById('airInput').value);
+
+            sendMessage({
+                status: 2,
+                message: {
+                    temprature: temp,
+                    wind: wind,
+                    airQuality: air
+                }
+            });
+        });
+
+        // 状态码3：开始全局数据
+        document.getElementById('startGlobalBtn').addEventListener('click', () => {
+            sendMessage({ status: 3 });
+            toggleGlobalButtons(true);
+        });
+
+        // 状态码4：停止全局数据
+        document.getElementById('stopGlobalBtn').addEventListener('click', () => {
+            sendMessage({ status: 4 });
+            toggleGlobalButtons(false);
+        });
+
+        // 状态码5：开始节点数据
+        document.getElementById('startNodeBtn').addEventListener('click', () => {
+            const nodeId = document.getElementById('nodeIdInput').value;
+            sendMessage({
+                status: 5,
+                message: { id: nodeId }
+            });
+            toggleNodeButtons(true);
+        });
+
+        // 状态码6：停止节点数据
+        document.getElementById('stopNodeBtn').addEventListener('click', () => {
+            const nodeId = document.getElementById('nodeIdInput').value;
+            sendMessage({
+                status: 6,
+                message: { id: nodeId }
+            });
+            toggleNodeButtons(false);
+        });
+
+        // 状态码7：开始路段数据
+        document.getElementById('startRoadBtn').addEventListener('click', () => {
+            const roadId = document.getElementById('roadIdInput').value;
+            sendMessage({
+                status: 7,
+                message: { id: roadId }
+            });
+            toggleRoadButtons(true);
+        });
+
+        // 状态码8：停止路段数据
+        document.getElementById('stopRoadBtn').addEventListener('click', () => {
+            const roadId = document.getElementById('roadIdInput').value;
+            sendMessage({
+                status: 8,
+                message: { id: roadId }
+            });
+            toggleRoadButtons(false);
+        });
+
+        // 状态码9：开始节点风险预测
+        document.getElementById('startNodeRiskBtn').addEventListener('click', () => {
+            const nodeId = document.getElementById('nodeRiskIdInput').value;
+            sendMessage({
+                status: 9,
+                message: { id: nodeId }
+            });
+            toggleNodeRiskButtons(true);
+        });
+
+        // 状态码10：停止节点风险预测
+        document.getElementById('stopNodeRiskBtn').addEventListener('click', () => {
+            const nodeId = document.getElementById('nodeRiskIdInput').value;
+            sendMessage({
+                status: 10,
+                message: { id: nodeId }
+            });
+            toggleNodeRiskButtons(false);
+        });
+
+        // 状态码11：开始路段风险预测
+        document.getElementById('startRoadRiskBtn').addEventListener('click', () => {
+            const roadId = document.getElementById('roadRiskIdInput').value;
+            sendMessage({
+                status: 11,
+                message: { id: roadId }
+            });
+            toggleRoadRiskButtons(true);
+        });
+
+        // 状态码12：停止路段风险预测
+        document.getElementById('stopRoadRiskBtn').addEventListener('click', () => {
+            const roadId = document.getElementById('roadRiskIdInput').value;
+            sendMessage({
+                status: 12,
+                message: { id: roadId }
+            });
+            toggleRoadRiskButtons(false);
+        });
+
+        // 发送消息到服务器
+        function sendMessage(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(data));
+                console.log('发送消息:', data);
+            } else {
+                alert('未连接到服务器，请先点击"连接服务器"按钮');
+            }
+        }
+
+        // 在指定区域显示响应
+        function logResponse(data, elementId) {
+            const area = document.getElementById(elementId);
+            const time = new Date().toLocaleTimeString();
+            area.innerHTML += `[${time}] ${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}\n\n`;
+            area.scrollTop = area.scrollHeight; // 自动滚动到底部
+        }
+
+        // 清空响应区域
+        function clearResponse(elementId) {
+            const area = document.getElementById(elementId);
+            area.innerHTML = '响应将显示在这里...';
+        }
+
+        // 启用/禁用所有功能按钮
+        function enableAllButtons(enable) {
+            // 启用按钮样式
+            const enabledClass = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift';
+            // 禁用按钮样式
+            const disabledClass = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed';
+
+            const testConnBtn = document.getElementById('testConnBtn');
+            const getWeatherBtn = document.getElementById('getWeatherBtn');
+            const setWeatherBtn = document.getElementById('setWeatherBtn');
+            const startGlobalBtn = document.getElementById('startGlobalBtn');
+            const startNodeBtn = document.getElementById('startNodeBtn');
+            const startRoadBtn = document.getElementById('startRoadBtn');
+            const startNodeRiskBtn = document.getElementById('startNodeRiskBtn');
+            const startRoadRiskBtn = document.getElementById('startRoadRiskBtn');
+
+            testConnBtn.disabled = !enable;
+            testConnBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            getWeatherBtn.disabled = !enable;
+            getWeatherBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            setWeatherBtn.disabled = !enable;
+            setWeatherBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            startGlobalBtn.disabled = !enable;
+            startGlobalBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            startNodeBtn.disabled = !enable;
+            startNodeBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            startRoadBtn.disabled = !enable;
+            startRoadBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            startNodeRiskBtn.disabled = !enable;
+            startNodeRiskBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+
+            startRoadRiskBtn.disabled = !enable;
+            startRoadRiskBtn.className = enable ? enabledClass + ' flex items-center' : disabledClass + ' flex items-center';
+        }
+
+        // 切换全局数据按钮状态
+        function toggleGlobalButtons(isRunning) {
+            const startBtn = document.getElementById('startGlobalBtn');
+            const stopBtn = document.getElementById('stopGlobalBtn');
+
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+
+            if (isRunning) {
+                startBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 hover-lift flex items-center';
+            } else {
+                startBtn.className = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+            }
+        }
+
+        // 切换节点数据按钮状态
+        function toggleNodeButtons(isRunning) {
+            const startBtn = document.getElementById('startNodeBtn');
+            const stopBtn = document.getElementById('stopNodeBtn');
+            const input = document.getElementById('nodeIdInput');
+
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+            input.disabled = isRunning;
+
+            if (isRunning) {
+                startBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 hover-lift flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 bg-gray-100 cursor-not-allowed';
+            } else {
+                startBtn.className = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary';
+            }
+        }
+
+        // 切换路段数据按钮状态
+        function toggleRoadButtons(isRunning) {
+            const startBtn = document.getElementById('startRoadBtn');
+            const stopBtn = document.getElementById('stopRoadBtn');
+            const input = document.getElementById('roadIdInput');
+
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+            input.disabled = isRunning;
+
+            if (isRunning) {
+                startBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 hover-lift flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 bg-gray-100 cursor-not-allowed';
+            } else {
+                startBtn.className = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary';
+            }
+        }
+
+        // 切换节点风险预测按钮状态
+        function toggleNodeRiskButtons(isRunning) {
+            const startBtn = document.getElementById('startNodeRiskBtn');
+            const stopBtn = document.getElementById('stopNodeRiskBtn');
+            const input = document.getElementById('nodeRiskIdInput');
+
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+            input.disabled = isRunning;
+
+            if (isRunning) {
+                startBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 hover-lift flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 bg-gray-100 cursor-not-allowed';
+            } else {
+                startBtn.className = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary';
+            }
+        }
+
+        // 切换路段风险预测按钮状态
+        function toggleRoadRiskButtons(isRunning) {
+            const startBtn = document.getElementById('startRoadRiskBtn');
+            const stopBtn = document.getElementById('stopRoadRiskBtn');
+            const input = document.getElementById('roadRiskIdInput');
+
+            startBtn.disabled = isRunning;
+            stopBtn.disabled = !isRunning;
+            input.disabled = isRunning;
+
+            if (isRunning) {
+                startBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/90 hover-lift flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 bg-gray-100 cursor-not-allowed';
+            } else {
+                startBtn.className = 'px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 hover-lift flex items-center';
+                stopBtn.className = 'px-4 py-2 bg-gray-200 text-gray-600 rounded-md cursor-not-allowed flex items-center';
+                input.className = 'id-input px-3 py-2 border border-gray-300 rounded-md w-24 focus:outline-none focus:ring-1 focus:ring-primary';
+            }
+        }
+    </script>
+</body>
+</html>
