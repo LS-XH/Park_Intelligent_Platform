@@ -13,17 +13,6 @@ from car import *
 from graph import Graph
 
 
-g = Graph()
-
-
-
-a =1
-
-
-
-
-
-raise Exception()
 # 设置图形
 fig, ax = plt.subplots(figsize=(20, 4))
 ax.set_xlim(40, 160)
@@ -55,7 +44,7 @@ c_list = [
     Car(1,70,1.5,"2"),  ###############
     Car(1,70,4.5,"3"),  ###############
     Car(2,70,7.5,"4"),
-    Car(1,80,4.5,"5"),
+    Car(1,75,4.5,"5"),
     Car(2,90,1.5,"6"),    #########
     Car(2,90,7.5,"7"),
     Car(0,110,1.5,"8"),
@@ -63,7 +52,7 @@ c_list = [
 ]
 
 
-cars=Cars(None,c_list)
+cars=Cars2(None,c_list)
 
 xs = []
 ys = []

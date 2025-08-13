@@ -78,7 +78,7 @@ class Cars:
         self.chatter = td.Chatter(0.4)
         self.forward = td.Forward(scale=0.001,bx=0)
         self.to_lane = td.AlignLane(ay=0.6,by=2)
-        self.avoid = td.CircleAvoidance(k=1,ax=0.1,bx=1.5,ay=2,by=5,safe_distance=30)
+        self.avoid = td.ComAvoidance(k=1,ax=0.1,bx=1.5,ay=2,by=5,safe_distance=10)
 
         self.brake = td.Brake(max_speed=5)
         self.cruise = td.Cruise(bx=0.01,cruise_speed=10)
@@ -97,6 +97,7 @@ class Cars:
         return res
     def simulate(self,dt:float=0.1):
         for car in self.cars:
+            car.zero_a()
 
             if car.id == "0":
                 a = 1
@@ -110,12 +111,13 @@ class Cars:
                 a = 1
             if car.id == "5":
                 a = 1
+            if car.id == "6":
+                a = 1
             if car.id == "8":
                 a = 1
             if car.id == "9":
                 a=1
 
-            car.zero_a()
 
 
 
@@ -134,6 +136,7 @@ class Cars:
             else:
                 avoid = self.avoid.increment(car,self.cars)
                 forward = forward > RigidBody(a_x=2)
+                forward = forward < avoid
                 c_lane = c_lane < avoid
                 # car + brake
 
@@ -147,6 +150,127 @@ class Cars:
             car.text = car.id
 
             # car.text = "%.1f,%.1f\n%.1f,%.1f\n" % (car.v_x,car.v_y,car.a_x, car.a_y)
+
+class Cars2:
+    def __init__(self,graph:Optional[Interface.GraphBase],cars:list[Car]):
+        self.graph = graph
+        self.cars = cars
+
+
+        self.chatter = td.Chatter(0.4)
+        self.forward = td.Forward(scale=0.001,bx=0)
+        self.to_lane = td.AlignLane(ay=0.6,by=2)
+        self.avoid = td.ComAvoidance(k=1,ax=0.5,bx=1.5,ay=2,by=5,safe_distance=10)
+        self.avoid_v = td.VectorAvoidence(k=1,ax=2,bx=0,ay=2,by=0,safe_distance=10)
+        self.avoid_a = td.AccAvoidence(k=10,ax=2,bx=0,ay=2,by=0,safe_distance=10)
+
+        self.brake = td.Brake(max_speed=5)
+        self.cruise = td.Cruise(bx=0.01,cruise_speed=10)
+    def simulate(self,dt:float=0.1):
+        #tendency
+        for car in self.cars:
+            car.zero_a()
+
+            if car.id == "2":
+                a=1
+
+
+            forward = self.forward(car)
+            brake = self.brake(car)
+            c_lane = self.to_lane.increment(car,obj_lane = car.obj_lane)
+            chatter = self.chatter(car)
+
+            if car.get_lane() != car.obj_lane:forward + RigidBody(a_x=2)
+
+            car + forward
+            car + c_lane
+
+
+        # supp
+        for car in self.cars:
+            if car.id == "3":
+                a=1
+            res = RigidBody()
+            avoid = self.avoid.increment(car, self.cars)
+            avoid_v = self.avoid_v.increment(car, self.cars)
+            avoid_a = self.avoid_a.increment(car, self.cars)
+
+            cruise = self.cruise(car)
+
+            if car.get_lane() == car.obj_lane:
+                avoidence = RigidBody(a_x = avoid.a_x+avoid_v.a_x+avoid_a.a_x)
+                res + avoidence
+
+                res + cruise
+            else:
+                res = res < avoid_v
+
+                res = res < RigidBody(a_x=avoid.a_x)
+
+            car + res
+
+        for car in self.cars:
+            # car + chatter
+            car.simulate(dt=dt)
+
+            # car.text = "%.1f,%.1f"%(car.a_x,car.a_y)
+            car.text = car.id
+
+class Cars21:
+    def __init__(self,graph:Optional[Interface.GraphBase],cars:list[Car]):
+        self.graph = graph
+        self.cars = cars
+
+
+        self.chatter = td.Chatter(0.4)
+        self.forward = td.Forward(scale=0.001,bx=0)
+        self.to_lane = td.AlignLane(ay=0.6,by=2)
+        self.avoid = td.ComAvoidance(k=1,ax=0.1,bx=1.5,ay=2,by=5,safe_distance=10)
+
+        self.avoid_v = td.VectorAvoidence(k=1,ax=2,bx=5,ay=2,by=5,safe_distance=10)
+
+        self.brake = td.Brake(max_speed=5)
+        self.cruise = td.Cruise(bx=0.01,cruise_speed=10)
+    def simulate(self,dt:float=0.1):
+        for car in self.cars:
+            car.zero_a()
+
+            if car.id == "2":
+                a=1
+
+
+            forward = self.forward(car)
+            brake = self.brake(car)
+            cruise = self.cruise(car)
+            c_lane = self.to_lane.increment(car,obj_lane = car.obj_lane)
+            chatter = self.chatter(car)
+
+
+            avoid = self.avoid.increment(car, self.cars)
+            avoid_v = self.avoid_v.increment(car, self.cars)
+
+            if car.get_lane() == car.obj_lane:
+                forward = forward > avoid
+                forward = forward < avoid
+                forward = forward + RigidBody(a_x = avoid_v.a_x)
+                car + cruise
+            else:
+                forward = forward > RigidBody(a_x=2)
+                forward = forward < avoid_v
+
+                c_lane = c_lane < avoid
+                # car + brake
+
+            car + forward
+            car + c_lane
+
+            # car + chatter
+            car.simulate(dt=dt)
+
+            # car.text = "%.1f,%.1f"%(car.a_x,car.a_y)
+            car.text = car.id
+
+
 
 class CAV:
     def __init__(self, graph: Optional[Interface.GraphBase], cars: list[Car]):
