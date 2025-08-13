@@ -16,7 +16,7 @@ import socket
 
 def setup_logging():
     """配置日志系统"""
-    log_format = ' [%(levelname)s] %(asctime)s %(message)s'
+    log_format = ' 【%(levelname)s】%(asctime)s %(message)s'
     date_format = '%Y-%m-%d %H:%M:%S'
 
     logging.basicConfig(
