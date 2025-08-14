@@ -29,22 +29,31 @@ class PersonBase(ABC):
         """
         pass
 
+    @property
     @abstractmethod
-    def get_pos(self, node_id:int, ranges:int=30)->list:
+    def density(self):
         """
-        获取节点周围的人
-        :param node_id:
-        :param ranges:
-        :return: [(x, y), (x, y), ...] in range
+        :return: np.array(DENSITY_MATRIX_SIZE * DENSITY_MATRIX_SIZE)
         """
         pass
 
+
     @abstractmethod
-    def kill(self, node_id:int, ranges:int=20):
+    def kill(self, node_id:int, radius:int=20, num:int=30):
         """
         remove people in range
         :param node_id:
-        :param ranges:
+        :param radius:
+        :param num:
         """
         pass
 
+    @abstractmethod
+    def birth(self, node_id: int, radius: int = 20, num: int = 30):
+        """
+        makeup people in range
+        :param node_id:
+        :param radius:
+        :param num:
+        """
+        pass

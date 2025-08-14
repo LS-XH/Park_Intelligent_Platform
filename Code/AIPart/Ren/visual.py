@@ -4,12 +4,10 @@ from matplotlib.animation import FuncAnimation
 import matplotlib
 import torch
 
+from Code.AIPart.Ren.agents import AgentGroup
+from Code.AIPart.Ren.obstacles import ObstacleGenerator
 from testmap import obstacles_params, targets, targets_heat, points
-from model import AgentGroup, ObstacleGenerator, num_agents, MAP_SIZE, DENSITY_CMAP, DENSITY_ALPHA, emergency
-
-# 配置设备
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"使用设备: {device}")
+from Code.AIPart.Ren.config import *
 
 # 配置交互后端
 matplotlib.use('TkAgg')
@@ -18,8 +16,18 @@ plt.rcParams["font.family"] = ["SimHei"]
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 # 创建智能体群体
-def create_agents(num_agents, map_matrix, intersection_id_map, obstacle_gen):
-    return AgentGroup(num_agents, map_matrix, intersection_id_map, obstacle_gen)
+def create_agents(num_agents,
+                  map_matrix,
+                  intersection_id_map,
+                  obstacle_gen,
+                  targets,
+                  targets_heat):
+    return AgentGroup(num_agents,
+                      map_matrix,
+                      intersection_id_map,
+                      obstacle_gen,
+                      targets,
+                      targets_heat, )
 
 
 # 生成地图障碍物
@@ -27,13 +35,18 @@ obstacle_gen = ObstacleGenerator(MAP_SIZE)
 obstacle_gen.add_obstacles(obstacles_params)
 
 # 初始化智能体群体
-agents = create_agents(num_agents, obstacle_gen.map_matrix, obstacle_gen.intersection_id_map, obstacle_gen)
+agents = create_agents(num_agents,
+                       obstacle_gen.map_matrix,
+                       obstacle_gen.intersection_id_map,
+                       obstacle_gen,
+                       targets,
+                       targets_heat)
 
 # 绘制画布
 fig, ax = plt.subplots(figsize=(12, 10))
 ax.set_xlim(0.0, MAP_SIZE)
 ax.set_ylim(0.0, MAP_SIZE)
-ax.set_title('带惯性特性的智能体导航系统')
+ax.set_title('带惯性特性和智能体间斥力的智能体导航系统')
 ax.set_xlabel('X坐标')
 ax.set_ylabel('Y坐标')
 
@@ -123,13 +136,25 @@ ax.legend()
 def update(frame):
     # 模拟交通灯状态
     if frame < 200:
-        traffic_light = [1, 0, 0, 0, 0, 0, 0, 0]  # ID=0红灯
+        traffic_light = [1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]  # ID=0红灯
     elif frame < 400:
-        traffic_light = [0, 1, 0, 0, 0, 0, 0, 0]  # ID=1红灯
+        traffic_light = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]  # ID=1红灯
     elif frame < 600:
-        traffic_light = [0, 0, 1, 0, 0, 0, 0, 0]  # ID=2红灯
+        traffic_light = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]  # ID=2红灯
     else:
-        traffic_light = [0, 0, 0, 0, 1, 0, 0, 0]  # ID=4红灯
+        traffic_light = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]  # ID=4红灯
+
+    # 每隔150帧添加和删除智能体
+    if frame % 150 == 0 and frame > 0:
+        # 在第一个目标点附近添加智能体
+        if len(targets) > 0:
+            target_x, target_y = targets[0]
+            agents.birth(target_x, target_y, 80.0, 50)
+
+        # 在紧急情况点附近删除智能体
+        if eme_pos:
+            eme_x, eme_y = eme_pos[0]
+            agents.kill(eme_x, eme_y, 100.0, 30)
 
     # 更新智能体位置
     if 300 <= frame <= 500:
@@ -141,14 +166,22 @@ def update(frame):
     positions = agents.positions.cpu().numpy()
     agents_plot.set_offsets(positions)
 
+    # 更新智能体大小显示（处理数量变化）
+    agent_sizes = agents.sizes.cpu().numpy()
+    agents_plot.set_sizes(agent_sizes)
+
+    # 更新智能体颜色（处理数量变化）
+    agent_colors = agents.colors.cpu().numpy()
+    agents_plot.set_facecolors(agent_colors)
+
     if frame % 50 == 0:
         # 更新密度热图
         density_data = agents.get_density().cpu().numpy()
-        print(density_data.max(), density_data.min())
+        print(np.max(density_data),np.min(density_data))
         density_plot.set_data(density_data.T)  # 转置以正确显示
 
         # 动态调整颜色范围以适应密度变化
-        current_max = min(density_data.max(), num_agents // 5)
+        current_max = min(density_data.max(), agents.num_agents // 10)
         if current_max > 0:
             density_plot.set_clim(vmin=0, vmax=current_max)
 
