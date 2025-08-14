@@ -1,13 +1,19 @@
 from numpy.ma.extras import column_stack
+
 from sympy.physics.units import temperature
-from Interface.graph import GraphBase, PointType,Point, Edge
+from Interface.graph import GraphBase, PointType,Point, Edge, GateStatus
+
 import math
 from enum import Enum
 import os
 import numpy as np
 import json
+
 import random
-from graph.common_func import generate_cars_list, generate_people_list
+from AIPart.graph.common_func import generate_cars_list, generate_people_list
+
+
+
 #from .information import weather,traffic_flow,human_flow,accident_rate
 
 
@@ -137,6 +143,21 @@ class Graph(GraphBase):
     def simulate_light(self, dt=0.1)->None:
         self.__tick += dt
         self.__traffic_light += dt
+
+    def leave_gate(self):
+        """
+        处理门点的状态：若门关闭则先打开，然后清除地图上的车辆
+        """
+        # 遍历所有点，找到类型为门的点
+        for point_id, point in enumerate(self.points):
+            if point.type == PointType.gate:
+                # 检查门的当前状态
+                if point.gate_status == GateStatus.close:
+                    # 切换门状态为打开
+                    point.gate_transition()
+                    # 这里假设存在清除车辆的方法，实际实现需根据车辆存储方式调整
+                    # 示例：若车辆信息存储在某个属性中，如self.cars，则清空
+                    pass
 
     def upgrade_weight(self):
         pass
