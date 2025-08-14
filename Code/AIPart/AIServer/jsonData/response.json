@@ -1,0 +1,109 @@
+{
+  "0": {
+    "status": 0,
+    "response": {
+      "content": "通信测试成功"
+    }
+  },
+
+  "1": {
+    "status": 1,
+    "response": {
+      "temperature": 26.8,
+      "wind": "东南风",
+      "airQuality": 65.3
+    }
+  },
+
+  "2": {
+    "status": 2,
+    "response": {
+      "content": "天气数据更新成功"
+    }
+  },
+
+  "3": {
+    "status": 3,
+    "response": {
+      "cars": 8652.5,
+      "people": 24389.0,
+      "crowding": "轻度拥挤"
+    }
+  },
+
+  "4": {
+    "status": 4,
+    "response": {
+      "content": "全局数据推送已停止"
+    }
+  },
+
+  "5": {
+    "status": 5,
+    "response": {
+      "nodeName": "云岫台",
+      "cars": 328.0,
+      "people": 1560.0,
+      "crowding": "中度拥挤",
+      "emergency": "无异常",
+      "trafficLight": "绿灯"
+    }
+  },
+
+  "6": {
+    "status": 6,
+    "response": {
+      "content": "节点数据推送已停止"
+    }
+  },
+
+  "7": {
+    "status": 7,
+    "response": {
+      "roadName": "和平路",
+      "cars": 1256,
+      "people": 3890,
+      "crowding": 68.5,
+      "emergency": "无异常"
+    }
+  },
+
+  "8": {
+    "status": 8,
+    "response": {
+      "content": "路段数据推送已停止"
+    }
+  },
+
+  "9": {
+    "status": 9,
+    "response": {
+      "nodeName": "月栖滩",
+      "riskData": [12.5, 15.3, 18.9, 22.1, 25.6, 28.3, 30.5, 29.8, 32.4, 35.7, 38.2, 42.1],
+      "predict": 45.8
+    }
+  },
+
+  "10": {
+    "status": 10,
+    "response": {
+      "content": "节点风险预测推送已停止"
+    }
+  },
+
+  "11": {
+    "status": 11,
+    "response": {
+      "roadName": "幸福街",
+      "riskData": [8.3, 10.5, 12.1, 15.6, 18.2, 20.5, 22.3, 25.1, 28.6, 30.2, 33.5, 36.8],
+      "predict": 40.2
+    }
+  },
+
+  "12": {
+    "status": 12,
+    "response": {
+      "content": "路段风险预测推送已停止"
+    }
+  }
+}
