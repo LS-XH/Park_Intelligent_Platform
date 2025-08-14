@@ -8,16 +8,14 @@ from Code.AIPart.Ren.config import device, DENSITY_MATRIX_SIZE, MAX_STEP, UPDATE
 class AgentGroup:
     def __init__(self,
                  num_agents,
-                 map_matrix,
-                 intersection_id_map,
                  obstacle_gen,
                  targets,
                  targets_heat
                  ):
         self.num_agents = num_agents
-        self.map = torch.tensor(map_matrix, device=device, dtype=torch.float32)
-        self.map_size = float(map_matrix.shape[0])
-        self.intersection_id_map = intersection_id_map
+        self.map = torch.tensor(obstacle_gen.map_matrix, device=device, dtype=torch.float32)
+        self.map_size = float(obstacle_gen.map_matrix.shape[0])
+        # self.intersection_id_map = intersection_id_map
         self.obstacle_gen = obstacle_gen
 
         # 密度矩阵缩放因子
@@ -47,7 +45,7 @@ class AgentGroup:
         self.target_heat = self.target_heat / self.target_heat.sum()
 
         # 预计算膨胀地图
-        self._precompute_expanded_map()
+        self.expanded_map = self._precompute_expanded_map()
 
         # 密度矩阵相关（修改为200x200）
         self.density = torch.zeros((DENSITY_MATRIX_SIZE, DENSITY_MATRIX_SIZE), device=device, dtype=torch.float32)
@@ -239,7 +237,7 @@ class AgentGroup:
 
     def _precompute_expanded_map(self):
         """预计算带安全距离的膨胀地图"""
-        self.expanded_map = self.map.clone()
+        expanded_map = self.map.clone()
         obstacle_points = torch.nonzero(self.map == 1.0).float()
 
         if len(obstacle_points) > 0:
@@ -253,7 +251,9 @@ class AgentGroup:
                     valid = (shifted[:, 0] >= 0) & (shifted[:, 0] < self.map_size) & \
                             (shifted[:, 1] >= 0) & (shifted[:, 1] < self.map_size)
                     valid_points = shifted[valid]
-                    self.expanded_map[valid_points[:, 0], valid_points[:, 1]] = 1.0
+                    expanded_map[valid_points[:, 0], valid_points[:, 1]] = 1.0
+        return expanded_map
+
 
     @staticmethod
     def point_to_segment_distance(points, seg_start, seg_end):

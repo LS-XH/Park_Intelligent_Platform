@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from Code.AIPart.Ren.config import PRECISION, device, points
+from Code.AIPart.Ren.config import PRECISION, device
 
 
 class Obstacle:
@@ -69,7 +69,7 @@ class Obstacle:
 class ObstacleGenerator:
     """障碍物生成器，优化障碍物数据结构"""
 
-    def __init__(self, map_size):
+    def __init__(self, map_size, points):
         self.map_size = float(map_size)
         # 地图矩阵使用float类型
         self.map_matrix = np.zeros((int(map_size), int(map_size)), dtype=np.float32)

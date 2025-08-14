@@ -6,7 +6,7 @@ import torch
 
 from Code.AIPart.Ren.agents import AgentGroup
 from Code.AIPart.Ren.obstacles import ObstacleGenerator
-from testmap import obstacles_params, targets, targets_heat, points
+from testmap import obstacles_params, targets, targets_heat, points, MAP_SIZE
 from Code.AIPart.Ren.config import *
 
 # 配置交互后端
@@ -17,27 +17,21 @@ plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 # 创建智能体群体
 def create_agents(num_agents,
-                  map_matrix,
-                  intersection_id_map,
                   obstacle_gen,
                   targets,
                   targets_heat):
     return AgentGroup(num_agents,
-                      map_matrix,
-                      intersection_id_map,
                       obstacle_gen,
                       targets,
-                      targets_heat, )
+                      targets_heat)
 
 
 # 生成地图障碍物
-obstacle_gen = ObstacleGenerator(MAP_SIZE)
+obstacle_gen = ObstacleGenerator(MAP_SIZE, points)
 obstacle_gen.add_obstacles(obstacles_params)
 
 # 初始化智能体群体
 agents = create_agents(num_agents,
-                       obstacle_gen.map_matrix,
-                       obstacle_gen.intersection_id_map,
                        obstacle_gen,
                        targets,
                        targets_heat)

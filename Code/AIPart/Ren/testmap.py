@@ -20,7 +20,8 @@ edges = [
     {"start_id": 23, "end_id": 24}, {"start_id": 23, "end_id": 28}, {"start_id": 24, "end_id": 25},
     {"start_id": 25, "end_id": 30}, {"start_id": 26, "end_id": 27}, {"start_id": 27, "end_id": 28},
     {"start_id": 28, "end_id": 29}, {"start_id": 29, "end_id": 30}, {"start_id": 24, "end_id": 29},
-    {"start_id": 17, "end_id": 24}, {"start_id": 22, "end_id": 26}, {"start_id": 18, "end_id": 25}
+    {"start_id": 17, "end_id": 24}, {"start_id": 22, "end_id": 26}, {"start_id": 18, "end_id": 25},
+    {"start_id": 30, "end_id": 21}
 ]
 
 # 所有坐标数字从乘3改为乘10
