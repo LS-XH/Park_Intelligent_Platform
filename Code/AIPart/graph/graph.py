@@ -53,6 +53,9 @@ class Graph(GraphBase):
 
         self.__tick = 0
 
+        # 存储密度数据
+        self.__density_data = {}
+
         # 天气信息
         self.__weather =[
             random.uniform(-20, 40), # temperature
@@ -62,6 +65,7 @@ class Graph(GraphBase):
         ]
         #初始化&载入点边
         self.load_json("%s\\graph\\data.json"%os.getcwd())
+        #加载密度数据
 
 
     def initialize_car(self, num_cars=None):
@@ -199,51 +203,109 @@ class Graph(GraphBase):
         except (KeyError, TypeError, ValueError) as e:
             print(f"修改天气失败：{e}")
             return False
-        
 
-    def get_all_information(self, time:int):
+    def matrix_to_map(self, density_matrix:np.ndarray):
+        # 计算最大坐标并确定地图尺寸
+        max_x = np.max(self.__positions[:, 0]) + 100
+        max_y = np.max(self.__positions[:, 1]) + 100
+        MAP_SIZE = int(max(max_x, max_y))
+        DENSITY_MATRIX_SIZE = 200 # 密度矩阵尺寸
+        scale = MAP_SIZE / DENSITY_MATRIX_SIZE # 缩放比例
+
+        # 生成目标矩阵的网格坐标（I, J），并反向映射到原始矩阵坐标（i, j）
+        I = np.arange(MAP_SIZE)
+        J = np.arange(MAP_SIZE)
+        i = np.clip(np.round(I / scale).astype(int), 0, DENSITY_MATRIX_SIZE - 1)
+        j = np.clip(np.round(J / scale).astype(int), 0, DENSITY_MATRIX_SIZE - 1)
+
+        # 利用广播机制快速填充目标矩阵
+        dst_matrix = density_matrix[i[:, np.newaxis], j]  # i[:, np.newaxis]将I转为列向量，与J广播
+
+        return dst_matrix
+
+
+    def get_all_information(self, density_matrix:np.ndarray):
         """
         获取全局车流、人流、拥挤程度数据
-        :return: [cars,people,crowding]
+
+        :param density_matrix: 密度矩阵，用于计算各项指标
+        :return: [cars,people,crowding] 返回包含车流量、人流量和拥挤程度的列表
         """
+        # 将密度矩阵转换为地图形式
+        dst_matrix = self.matrix_to_map(density_matrix)
+        # 计算地图上的总密度值
+        total_density = np.sum(dst_matrix)
+        # 计算地图的总面积
+        map_area = dst_matrix.shape[0] * dst_matrix.shape[1]
+        # 计算车流量
+        cars = total_density * CARS_NUM_THREADS
+        # 计算人流量
+        people = total_density * PEOPLE_NUM_THREADS
+        # 计算拥挤程度
+        crowding = total_density
+        # 返回计算结果
+        return [cars, people, crowding]
 
-
-
-        pass
-
-    def get_point_information(self, point_id: int, time:int):
+    def get_point_information(self, point_id: int, density_matrix:np.ndarray):
         """
         获取指定节点的车流、人流、拥挤程度数据
-        :param time:
         :param point_id: 节点id,
         :return:[cars, people, crowding, emergency, trafficLight]
         """
-        pass
+        dst_matrix = self.matrix_to_map(density_matrix) # 将密度矩阵转换为地图数据
+        MAP_SIZE = dst_matrix.shape[0] # 获取地图尺寸
+        if point_id < 0 or point_id >= len(self.points): # 检查节点ID是否有效
+            raise ValueError("节点id无效")
+        x, y = self.__positions[point_id] # 获取节点的x,y坐标
+        # 计算地图的x,y坐标范围
+        min_x_map = np.min(self.__positions[:, 0])
+        max_x_map = np.max(self.__positions[:, 0]) + 100
+        min_y_map = np.min(self.__positions[:, 1])
+        max_y_map = np.max(self.__positions[:, 1]) + 100
+        # 计算x,y方向的归一化坐标
+        norm_x = (x - min_x_map) / (max_x_map - min_x_map) if (max_x_map - min_x_map) != 0 else 0
+        norm_y = (y - min_y_map) / (max_y_map - min_y_map) if (max_y_map - min_y_map) != 0 else 0
+        # 将归一化坐标转换为地图矩阵的索引
+        I = int(np.clip(round(norm_x * (MAP_SIZE - 1)), 0, MAP_SIZE - 1))  # x方向索引
+        J = int(np.clip(round(norm_y * (MAP_SIZE - 1)), 0, MAP_SIZE - 1))  # y方向索引
+        point_density = dst_matrix[I, J] # 获取该点的密度值
+        # 根据密度值计算车流量、人流量和拥挤程度
+        cars = point_density * CARS_NUM_THREADS
+        people = point_density * PEOPLE_NUM_THREADS
+        crowding = point_density
+        # 突发事件
+        emergency = None
+        # trafficLight红绿灯是边的数据
+        return [cars, people, crowding, emergency]
+        # 返回包含车流、人流、拥挤程度、紧急情况和交通灯状态的列表
 
-    def get_road_information(self, road_id: int, time:int):
+    def get_road_information(self, road_id: int, density_matrix:np.ndarray):
         """
         获取指定路段的车流、人流、拥挤程度数据
         :param road_id: int
-        :param time: int
         :return:[cars, people, crowding, emergency, trafficLight]
         """
-        pass
+        dst_matrix = self.matrix_to_map(density_matrix) # 将密度矩阵转换为地图数据
+        MAP_SIZE = dst_matrix.shape[0] # 获取地图尺寸
+        if road_id < 0 or road_id >= len(self.edges): # 检查节点ID是否有效
+            raise ValueError("节点id无效")
+    # return [cars, people, crowding, emergency, trafficLight]
 
-    def get_point_risk_data(self, point_id: int, time:int):
+
+    def get_point_risk_data(self, point_id: int, density_matrix:np.ndarray):
         """
-        获取指定节点的风险数据
+        获取指定节点的风险数据,跟天气，拥挤程度，紧急状况
         :param point_id: int
-        :param time: int
         :return: [riskData1, riskData2, ..., riskDataN],predict
         """
+        cars, people, crowding, emergency = self.get_point_information(point_id, density_matrix)
 
         pass
 
-    def get_road_risk_data(self, road_id: int, time:int):
+    def get_road_risk_data(self, road_id: int, density_matrix:np.ndarray):
         """
         获取指定路段的风险数据
         :param road_id: int
-        :param time: int
         :return: [riskData1, riskData2, ..., riskDataN],predict
         """
         pass
@@ -293,10 +355,9 @@ class Graph(GraphBase):
             self.__traffic_light[end_id, end_id] = index * ALLOW_LIGHT_TIMES
         return True
 
-#graph=Graph()
-#graph.load_json("data.json")
-#print("\n度的邻接矩阵")
-# graph = Graph()
+# graph=Graph()
+# print("\n度的邻接矩阵")
+# print(graph.length)
 # graph.load_json("data02.json")
 # print("\n长度的邻接矩阵")
 # print(graph.length)
