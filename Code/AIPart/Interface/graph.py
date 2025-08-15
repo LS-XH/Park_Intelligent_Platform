@@ -43,6 +43,9 @@ class Point:
     def y(self) -> float:
         return self.__y
     @property
+    def position(self)->np.ndarray:
+        return np.array([self.__x, self.__y])
+    @property
     def gate_status(self) -> GateStatus:
         return self.__gate_status
 
@@ -147,7 +150,7 @@ class GraphBase(ABC):
         点的名字到数字id（列表索引）的映射
         :return:
         """
-        return self.__points_id
+        return self.__points_id.copy()
 
     @property
     @abstractmethod
@@ -189,6 +192,32 @@ class GraphBase(ABC):
         :return:
         """
         pass
+    @property
+    @abstractmethod
+    def corssing_radius(self)->np.ndarray:
+        """
+        以点id为序号，返回路口半径的矩阵
+        :return:
+        """
+        pass
+    @property
+    @abstractmethod
+    def cut_length(self)->np.ndarray:
+        """
+        道路在截断路口半径后的长度矩阵
+        :return:
+        """
+        pass
+    @property
+    @abstractmethod
+    def crossing_turn(self)->np.ndarray:
+        """
+        每个路口，每个道路的转向时行驶圆弧路径，为四维矩阵
+
+        用圆心，起始角度，终止角度来表示圆弧，逆时针旋转
+        [cross_id,from_id,to_id]:{circle_x,circle_y,start_angle,end_angle}
+        :return:
+        """
     @property
     @abstractmethod
     def traffic_light(self) -> np.ndarray:

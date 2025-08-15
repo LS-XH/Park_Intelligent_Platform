@@ -8,8 +8,6 @@ from Interface.physics import RigidBody
 
 __all__=[
     'Tendency',
-    'Suppression',
-
 ]
 
 
@@ -35,7 +33,8 @@ class Forward(Tendency):
             self,
             scale:float=1,
             bx:float=1,
-            cruise_speed:float=1
+            cruise_speed:float=1,
+            lane_k:float=1,
     ):
         """
         前行趋势
@@ -46,12 +45,13 @@ class Forward(Tendency):
         self.__scale = scale
         self.__bx = bx
         self.__cruise_speed = cruise_speed
+        self.__lane_k = lane_k
 
         super().__init__()
         return
 
-    def increment(self,obj:RigidBody,*args):
-        return RigidBody(a_x=self.__scale-self.__bx*obj.v_x)
+    def increment(self,obj:RigidBody,lane:int = 0):
+        return RigidBody(a_x=self.__scale-self.__bx*obj.v_x+self.__lane_k*lane)
 
 class Avoidance(Tendency):
     def __init__(
@@ -106,6 +106,131 @@ class Avoidance(Tendency):
             a_x=self.__k*a_x,
             a_y=self.__k*a_y,
         )
+
+class LinearAvoidance(Tendency):
+    def __init__(
+            self,
+            k: float = 1,
+            ax: float = 1,
+            bx: float = 1,
+            ay: float = 1,
+            by: float = 1,
+            safe_distance: float = 3,
+            epsilon : float = 0.01
+    ):
+        """
+
+        :param k:
+        :param ax:
+        :param bx:
+        :param ay:
+        :param by:
+        :param safe_distance:
+        :param crash_distance:
+        :param epsilon:
+        """
+        super().__init__()
+        self.__k = k
+        self.__ax = ax
+        self.__bx = bx
+        self.__ay = ay
+        self.__by = by
+        self.__safe_distance = safe_distance
+        self.__epsilon = epsilon
+
+
+    def increment(self, obj: RigidBody, target_cars: list[RigidBody] = None):
+        if target_cars is None:
+            raise Exception("please add target_car")
+
+        a_x, a_y = 0, 0
+        for target_car in target_cars:
+            distance = max(np.linalg.norm(target_car.position - obj.position).item(),self.__epsilon)
+            if (target_car.p_x != obj.p_x or target_car.p_y != obj.p_y or obj!=target_car) and distance < self.__safe_distance:
+                distance_i = (self.__safe_distance**2/distance-self.__safe_distance)
+                distance_xi = (self.__safe_distance**2/max(abs(obj.p_x-target_car.p_x),self.__epsilon)-self.__safe_distance)
+                distance_yi = (self.__safe_distance**2/max(abs(obj.p_y-target_car.p_y),self.__epsilon)-self.__safe_distance)
+                distance_l = (self.__safe_distance/distance-1)
+
+                a_x = max(self.__ax*distance_l*(obj.p_x-target_car.p_x)/distance-self.__bx*(obj.v_x-target_car.v_x),a_x,key=abs)
+
+                a_y = max(self.__ay*(obj.p_y-target_car.p_y)/distance-self.__by*(obj.v_y-target_car.v_y),a_y,key=abs)
+        return RigidBody(
+            a_x=self.__k * a_x,
+            a_y=self.__k * a_y,
+        )
+
+
+
+
+class RearEndedAvoidance(Tendency):
+    def __init__(
+            self,
+            k: float = 1,
+            ax: float = 1,
+            bx: float = 1,
+            ay: float = 1,
+            by: float = 1,
+            safe_distance: float = 3,
+            crash_distance: float = 1,
+            epsilon : float = 0.01
+    ):
+        """
+
+        :param k:
+        :param ax:
+        :param bx:
+        :param ay:
+        :param by:
+        :param safe_distance:
+        :param crash_distance:
+        :param epsilon:
+        """
+        super().__init__()
+        self.__k = k
+        self.__ax = ax
+        self.__bx = bx
+        self.__ay = ay
+        self.__by = by
+        self.__safe_distance = safe_distance
+        self.__crash_distance = crash_distance
+        self.__epsilon = epsilon
+
+
+    def increment(self, obj: RigidBody, target_cars: list[RigidBody] = None):
+        if target_cars is None:
+            raise Exception("please add target_car")
+
+        if obj.id == "1":
+            a = 1
+        a_x, a_y = 0, 0
+
+        for target_car in target_cars:
+            if target_car.v_x == 0 and target_car.v_y == 0:continue
+            if obj.v_x == 0 and obj.v_y == 0:continue
+
+            distance = max(np.linalg.norm(target_car.position - obj.position).item(),self.__epsilon)
+            if (target_car.p_x != obj.p_x or target_car.p_y != obj.p_y or obj!=target_car) and distance < self.__safe_distance:
+                distance_xi = (1/max(abs(obj.p_x-target_car.p_x),self.__epsilon))
+                # 抵触强度，正切相似度
+                sin_sim = 0
+                if np.linalg.norm(obj.velocity.flatten()-target_car.velocity.flatten()) != 0:
+                    sin_sim = np.cross(obj.velocity.flatten()-target_car.velocity.flatten(),obj.position.flatten()-target_car.position.flatten()) / (np.linalg.norm(obj.velocity.flatten()-target_car.velocity.flatten())*distance)
+                sin_sim = abs(sin_sim)
+
+                aaa_x = sin_sim*(self.__ax*distance_xi*(obj.p_x-target_car.p_x)/distance**2-self.__bx*(obj.v_x-target_car.v_x))
+                a_x = max(aaa_x,a_x,key=abs)
+
+                a_y = max(self.__ay*(obj.p_y-target_car.p_y)/distance-self.__by*(obj.v_y-target_car.v_y),a_y,key=abs)
+        return RigidBody(
+            a_x=self.__k * a_x,
+            a_y=self.__k * a_y,
+        )
+
+
+
+
+
 class ComAvoidance(Tendency):
     def __init__(
             self,
@@ -206,27 +331,23 @@ class VectorAvoidence(Tendency):
 
         a_x, a_y = 0, 0
         for target_car in target_cars:
+            if target_car.v_x == 0 and target_car.v_y == 0:continue
+            if obj.v_x == 0 and obj.v_y == 0:continue
             distance = max(np.linalg.norm(target_car.position - obj.position).item(),self.__epsilon)
-            if (target_car.p_x != obj.p_x or target_car.p_y != obj.p_y or obj!=target_car) and distance < self.__safe_distance:
-                distance_k = (1 / (max(distance - self.__crash_distance, self.__epsilon)) - 1 / self.__safe_distance)
-                distance_i = (self.__safe_distance**2/distance-self.__safe_distance)
-                distance_xi = (self.__safe_distance**2/max(abs(obj.p_x-target_car.p_x),self.__epsilon)-self.__safe_distance)
-                distance_yi = (self.__safe_distance**2/max(abs(obj.p_y-target_car.p_y),self.__epsilon)-self.__safe_distance)
-                distance_l = (self.__safe_distance/distance-1)
-                distance_in=(1/(max(distance,self.__epsilon)))
-                # 抵触强度，正切相似度
-                tan_sim = abs(np.cross(obj.velocity.flatten(), target_car.velocity.flatten()) / np.dot(obj.velocity.flatten(), target_car.velocity.flatten())) / distance
-                # target方向向量
-                vector_p = (obj.position - target_car.position) / distance
-                # 速度垂直方向
-                vector_v = np.array([-target_car.v_y, target_car.v_x])
-                # 转换方向至与抑制p方向同边
-                if np.dot(vector_v,vector_p.flatten()) < 0: vector_v = -vector_v
 
-                vector_v *= tan_sim
+            # 抵触强度，正切相似度
+            tan_sim = abs(np.cross(obj.velocity.flatten(), target_car.velocity.flatten()) / np.dot(obj.velocity.flatten(),target_car.velocity.flatten())) / distance
+            # target方向向量
+            vector_p = (obj.position - target_car.position) / distance
+            # 速度垂直方向
+            vector_v = np.array([-(target_car.v_y), (target_car.v_x)])
+            # 转换方向至与抑制p_x方向同边
+            if vector_v[0] * vector_p.flatten()[0]< 0: vector_v = -vector_v
 
-                a_x = max(self.__ax*vector_v[0].item()-self.__bx*(obj.v_x-target_car.v_x), a_x, key=abs)
-                a_y = max(self.__ay*vector_v[1].item()-self.__by*(obj.v_y-target_car.v_y), a_y, key=abs)
+            vector_v *= tan_sim
+
+            a_x = max(self.__ax * vector_v[0].item() - self.__bx * (obj.v_x - target_car.v_x), a_x, key=abs)
+            a_y = max(self.__ay * vector_v[1].item() - self.__by * (obj.v_y - target_car.v_y), a_y, key=abs)
 
         return RigidBody(
             a_x=self.__k * a_x,
@@ -275,22 +396,13 @@ class AccAvoidence(Tendency):
         for target_car in target_cars:
             distance = max(np.linalg.norm(target_car.position - obj.position).item(),self.__epsilon)
             if (target_car.p_x != obj.p_x or target_car.p_y != obj.p_y or obj!=target_car) and distance < self.__safe_distance:
-                distance_k = (1 / (max(distance - self.__crash_distance, self.__epsilon)) - 1 / self.__safe_distance)
-                distance_i = (self.__safe_distance**2/distance-self.__safe_distance)
-                distance_xi = (self.__safe_distance**2/max(abs(obj.p_x-target_car.p_x),self.__epsilon)-self.__safe_distance)
-                distance_yi = (self.__safe_distance**2/max(abs(obj.p_y-target_car.p_y),self.__epsilon)-self.__safe_distance)
-                distance_l = (self.__safe_distance/distance-1)
-                distance_in=(1/(max(distance,self.__epsilon)))
-                # 抵触强度，正切相似度
-                tan_sim = abs(np.cross(obj.acceleration.flatten(), target_car.acceleration.flatten()) / np.dot(obj.acceleration.flatten(), target_car.acceleration.flatten())) / distance
                 # target方向向量
                 vector_p = (obj.position - target_car.position) / distance
                 # 速度垂直方向
-                vector_a = np.array([-target_car.a_y, target_car.a_x])
+                vector_a = np.array([-(target_car.a_y-obj.a_y), (target_car.a_x-obj.a_y)])
                 # 转换方向至与抑制p方向同边
-                if np.dot(vector_a,vector_p.flatten()) < 0: vector_p = -vector_p
+                if vector_a[0] * vector_p.flatten()[0] < 0: vector_a = -vector_a
 
-                vector_a *= tan_sim
 
                 a_x = max(self.__ax*vector_a[0].item()-self.__bx*(obj.v_x-target_car.v_x), a_x, key=abs)
                 a_y = max(self.__ay*vector_a[1].item()-self.__by*(obj.v_y-target_car.v_y), a_y, key=abs)
@@ -403,6 +515,7 @@ class Cruise(Tendency):
             self,
             bx:float=1,
             cruise_speed:float=1,
+            lane_k:float=1,
     ):
         """
 
@@ -412,11 +525,32 @@ class Cruise(Tendency):
         super().__init__()
         self.__bx = bx
         self.__cruise_speed = cruise_speed
+        self.__lane_k = lane_k
 
-    def increment(self,obj:RigidBody,*args) ->RigidBody:
+    def increment(self,obj:RigidBody,lane = 0) ->RigidBody:
         return RigidBody(
-            a_x=0 if abs(obj.v_x)<self.__cruise_speed else -self.__bx*(abs(obj.v_x)-self.__cruise_speed)**2,
+            a_x=0 if abs(obj.v_x)<self.__cruise_speed+self.__lane_k*lane else -self.__bx*(abs(obj.v_x)-(self.__cruise_speed+self.__lane_k*lane))**2,
         )
 
 
+class DetermineStop(Tendency):
+    def __init__(
+            self,
+            stop_x:float=200,
+            lead_x:float=10,
+            lane_length:float=3,
+            scale:float=1,
+
+    ):
+        super().__init__()
+        self.__stop_x = stop_x
+        self.__lead_x = lead_x
+        self.__lane_length = lane_length
+        self.__scale = scale
+
+    def increment(self,obj:RigidBody,*args) ->RigidBody:
+        if obj.p_x>self.__stop_x-self.__lead_x:
+            return RigidBody(a_x=self.__scale * (self.__stop_x - obj.p_x)  - obj.v_x)
+        else:
+            return RigidBody()
 

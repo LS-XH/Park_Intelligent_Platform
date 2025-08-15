@@ -8,11 +8,11 @@ __all__ = [
     'PlatformBase'
 ]
 
-from Code.AIPart.Interface.car import CarsBase
-from Code.AIPart.Interface.graph import GraphBase
-from Code.AIPart.Interface.people import PersonBase
-from Code.AIPart.Interface.physics import RigidBody
-from Code.AIPart.Interface.platform import PlatformBase
+from Interface.car import CarsBase
+from Interface.graph import GraphBase
+from Interface.people import PersonBase
+from Interface.physics import RigidBody
+from Interface.platform import PlatformBase
 
 __version__ = "1.0.0"
 __author__ = "QG Studio- AI Team"
