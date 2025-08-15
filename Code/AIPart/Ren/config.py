@@ -9,7 +9,7 @@ print(f"使用设备: {device}")
 
 PRECISION = 0
 # 地图参数
-num_agents = 4000
+num_agents = 1000
 target_radius = 90.0  # 改为float
 emergency = [
     ((100.0 * 3, 50.0 * 3), 1),  # 改为float
@@ -38,3 +38,6 @@ DENSITY_ALPHA = 0.6  # 密度图透明度
 DENSITY_CMAP = 'jet'  # 密度图颜色映射
 UPDATE_DENSITY_STEP = 50
 DENSITY_MATRIX_SIZE = 200  # 新增：密度矩阵大小
+
+MODEL_DIR_WEIGHT = 0.2
+TRAIN_SET = False
