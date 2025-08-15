@@ -1,6 +1,6 @@
 from math import log10, pi
 import torch
-from Code.AIPart.Ren.testmap import obstacles_params, targets, targets_heat, points, MAP_SIZE
+# from Code.AIPart.Ren.testmap import obstacles_params, targets, targets_heat, points, MAP_SIZE
 
 
 # 配置设备
@@ -17,7 +17,7 @@ emergency = [
 ]
 MIN_SPEED, MAX_SPEED = 0.3, 1.0  # 改为float
 MAX_STEP = 50
-evacuate_rate = log10(MAP_SIZE)  # 疏散速率参数
+evacuate_rate = 3  # 疏散距离参数
 CHANGE_PROB = 0.002
 
 # 障碍物检测参数
