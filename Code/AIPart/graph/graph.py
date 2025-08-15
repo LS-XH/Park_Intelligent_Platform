@@ -10,7 +10,7 @@ import numpy as np
 import json
 
 import random
-from AIPart.graph.common_func import generate_cars_list, generate_people_list
+from graph.common_func import generate_cars_list, generate_people_list
 
 
 
@@ -22,6 +22,7 @@ PEOPLE_NUM_THREADS = 3000 # 人阈值
 GREEN_LIGHT_TIMES = 27 # 绿灯时间
 YELLOW_LIGHT_TIMES = 3 # 黄灯时间
 ALLOW_LIGHT_TIMES = GREEN_LIGHT_TIMES+YELLOW_LIGHT_TIMES # 允许通行时间
+ROAD_WIDTH = 3 * 6
 
 
 class TrafficLightStatue(Enum):
@@ -48,6 +49,12 @@ class Graph(GraphBase):
         self.__degree = np.empty((0,0))
         # 限速矩阵
         self.__limit_speed = np.empty((0,0),dtype=float)
+        # 路口半径
+        self.__corssing_radius = np.empty((0,0),dtype=float)
+        # 截断距离
+        self.__cut_length = np.empty((0,0),dtype=float)
+        # 路口转向路径矩阵
+        self.__crossing_turn = np.empty((0,0),dtype=float)
         #红绿灯矩阵
         self.__traffic_light = np.empty((0,0),dtype=float)
 
@@ -108,6 +115,16 @@ class Graph(GraphBase):
     @property
     def traffic_light(self)->np.ndarray:
         return np.array(self.__traffic_light)
+
+    @property
+    def corssing_radius(self)->np.ndarray:
+        return np.array(self.__corssing_radius)
+    @property
+    def cut_length(self)->np.ndarray:
+        return np.array(self.__cut_length)
+    @property
+    def crossing_turn(self)->np.ndarray:
+        return np.array(self.__crossing_turn)
 
     def now_light(self, start_id: int, end_id: int) -> (TrafficLightStatue,float):
         """
@@ -343,10 +360,71 @@ class Graph(GraphBase):
         self.__length += self.__length.T
         self.__limit_speed += self.__limit_speed.T
 
+        # 初始化radius
+        self.__corssing_radius = np.zeros(len(self.points), dtype=float)
+        for cross_id,cross_point in enumerate(self.points):
+            # 遍历cross列，即为到达这个路口的点
+            for from_point in [self.points[point_id] for point_id,degree in enumerate(self.degree[:, cross_id]) if degree!=0]:
+                # 遍历cross行，即为到从这个路口出发的点
+                for to_point in [self.points[point_id] for point_id,degree in enumerate(self.degree[cross_id,:]) if degree!=0]:
+                    l3 = np.linalg.norm(from_point.position - to_point.position)
+                    if l3 == 0:continue
+
+                    l1 = np.linalg.norm(cross_point.position - from_point.position)
+                    l2 = np.linalg.norm(cross_point.position - to_point.position)
+                    cos = (l1**2+l2**2-l3**2)/(2*l1*l2)
+                    radius = ROAD_WIDTH/(2*np.sqrt((1-cos)/2))
+                    if self.__corssing_radius[cross_id] == 0 or self.__corssing_radius[cross_id] > radius:self.__corssing_radius[cross_id] = radius
+
+        # 初始化cut_length
+        self.__cut_length = np.array(self.__length.copy())
+        for start_id,row in enumerate(self.__cut_length):
+            for end_id,item in enumerate(row):
+                self.__cut_length[start_id,end_id] -= self.__corssing_radius[start_id]-self.__corssing_radius[end_id]
+
+        # 初始化turn
+        self.__crossing_turn = np.empty((len(self.points), len(self.points),len(self.points)), dtype=dict)
+        for cross_id, cross_point in enumerate(self.points):
+            # 遍历cross列，即为到达这个路口的点
+            if cross_id == 30:
+                a = 1
+            for from_point in [self.points[point_id] for point_id, degree in enumerate(self.degree[:, cross_id]) if degree != 0]:
+                # from法向量
+                vector_from = (cross_point.position - from_point.position)/self.length[self.point_name2id[from_point.name],cross_id]
+                # 垂直逆时针法向量
+                vertical_from = np.array([vector_from[1], -vector_from[0]])
+                vertical_from *= np.cross(vector_from, vertical_from)   # 用于更为逆时针
+
+                # 遍历cross行，即为到从这个路口出发的点，用from，to两向量正角度来按照角度排序（to的逆时针排序，即车道从lane0到lane2，先右转再左转）
+                ttt = sorted([self.points[point_id] for point_id, degree in enumerate(self.degree[cross_id, :]) if degree != 0 and point_id != self.point_name2id[from_point.name]],key = lambda to_point:np.cross(cross_point.position-from_point.position,to_point.position-cross_point.position).item())
+                for lane,to_point in enumerate(sorted([self.points[point_id] for point_id, degree in enumerate(self.degree[cross_id, :]) if degree != 0 and point_id != self.point_name2id[from_point.name]],key = lambda to_point:np.cross(cross_point.position-from_point.position,to_point.position-cross_point.position).item())):
+                    # to法向量
+                    vector_to = (to_point.position - cross_point.position)/self.length[cross_id,self.point_name2id[to_point.name]]
+                    # 垂直逆时针法向量
+                    vertical_to = np.array([vector_to[1], -vector_to[0]])/np.linalg.norm(vector_to)
+                    vertical_to *= np.cross(vector_to, vertical_to)  # 用于更为逆时针
+
+                    point_s = cross_point.position - self.corssing_radius[cross_id] * vector_from + (lane+0.5) * ROAD_WIDTH * vertical_from
+                    point_e = cross_point.position + self.corssing_radius[cross_id] * vector_to + (lane+0.5) * ROAD_WIDTH * vertical_to
+
+                    # centre = np.linalg.solve(np.vstack((vector_from, vector_to)),np.array([np.dot(vector_from, point_s), np.dot(vector_to, point_e)]))
+                    try:
+                        centre = np.linalg.solve(np.vstack((vector_from, vector_to)),np.array([np.dot(vector_from, point_s), np.dot(vector_to, point_e)]))
+                    except np.linalg.LinAlgError:
+                        centre = None
+                    if self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] is not None:
+                        a = 1
+                    self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] = {
+                        "centre": centre.tolist() if centre is not None else None,
+                        "from":vector_from.tolist(),
+                        "to":vector_to.tolist()
+                    }
         # 初始化traffic_light
         self.__traffic_light = np.zeros((len(self.points), len(self.points)), dtype=float)
         for end_id,end_point in enumerate(self.points):
             index = 1
+            if end_id == 30:
+                a=1
             for start_id,start_point in enumerate(self.points):
                 if self.degree[start_id, end_id] != 0:
                     self.__traffic_light[start_id, end_id] = index * ALLOW_LIGHT_TIMES
@@ -354,6 +432,10 @@ class Graph(GraphBase):
             # 人行道
             self.__traffic_light[end_id, end_id] = index * ALLOW_LIGHT_TIMES
         return True
+
+
+
+
 
 # graph=Graph()
 # print("\n度的邻接矩阵")

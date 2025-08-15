@@ -14,12 +14,13 @@ class RigidBody:
             v_x: float = 0,
             v_y: float = 0,
             a_x: float = 0,
-            a_y: float = 0
+            a_y: float = 0,
+            vector_basis:np.ndarray = np.array([[1,0],[0,1]],dtype=np.float64)
         ):
         self.__position = np.array([[p_x], [p_y]],dtype=np.float64)
         self.__velocity = np.array([[v_x],[v_y]],dtype=np.float64)
         self.__acceleration = np.array([[a_x],[a_y]],dtype=np.float64)
-        self.__vector_basis = np.array([[1,0],[0,1]],dtype=np.float64)
+        self.__vector_basis = np.array([[1,0],[0,1]],dtype=np.float64) if vector_basis is None else vector_basis
 
     def __lt__(self, other: 'RigidBody')->'RigidBody':
         """
@@ -98,7 +99,13 @@ class RigidBody:
         res.a_x = minabs(self.a_x, other.a_x)
         res.a_y = minabs(self.a_y, other.a_y)
         return res
-    def __add__(self, other: 'RigidBody'):
+    def __add__(self, other: 'RigidBody')->'RigidBody':
+        res = RigidBody()
+        res.__position = self.position + other.position
+        res.__velocity = self.velocity + other.velocity
+        res.__acceleration = self.acceleration + other.acceleration
+        return res
+    def __iadd__(self, other: 'RigidBody'):
         """
         原地操作，相当于+=，会改变原来的变量
         :param other:
@@ -197,7 +204,7 @@ class RigidBody:
     def a_y(self,a_y):
         self.__acceleration[1,0] = a_y
 
-    def transform(self,obj_ref:np.ndarray):
+    def transform(self,obj_ref:np.ndarray=np.array([[0,1],[1,0]])):
         """
         对此对象的物理量转移基底向量至直角坐标系，本质为一组线性变换
         :param obj_ref: 转换的目标参考系
