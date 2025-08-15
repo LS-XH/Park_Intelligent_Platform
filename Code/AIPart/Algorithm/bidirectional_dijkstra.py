@@ -13,6 +13,14 @@ end 终点
 """
 
 def bidirectional_dijkstra(adj, start, end):
+    """
+    最短路径算法
+    :param adj:长度矩阵
+    :param start: 起点id
+    :param end: 终点id
+    :return: path 最短路径列表
+    """
+
     # 创建正向距离字典：起点到每个结点的初始距离设为无穷大
     forward_dist = {node: float('inf') for node in range(len(adj))}
     # 起点距离设置为 0，放入“优先队列”
@@ -168,7 +176,7 @@ def bidirectional_dijkstra(adj, start, end):
         path.append(node)
 
     # 返回完整路径和最短距离
-    return path, shortest_distance
+    return path
 
 
 def generate_large_adj_matrix(size, density=0.2, min_weight=1, max_weight=10):
@@ -183,11 +191,11 @@ def generate_large_adj_matrix(size, density=0.2, min_weight=1, max_weight=10):
                 adj[j][i] = weight  # 无向图对称
     return adj
 
-if __name__ == '__main__':
-    # 论文中示例图的邻接矩阵
-    adj1 = generate_large_adj_matrix(10000, density=0.5, min_weight=1, max_weight=10)
-    t = time.thread_time()
-    path1, distance = bidirectional_dijkstra(adj1, 2602, 2601)
-    print(f"{time.thread_time() - t}s")
-    print(f"最短路径: {path1}")
-    print(f"最短距离: {distance}")
+# if __name__ == '__main__':
+#     # 论文中示例图的邻接矩阵
+#     adj1 = generate_large_adj_matrix(10000, density=0.5, min_weight=1, max_weight=10)
+#     t = time.thread_time()
+#     path1, distance = bidirectional_dijkstra(adj1, 2602, 2601)
+#     print(f"{time.thread_time() - t}s")
+#     print(f"最短路径: {path1}")
+#     print(f"最短距离: {distance}")

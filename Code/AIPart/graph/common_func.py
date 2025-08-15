@@ -1,6 +1,7 @@
 import json
 import random
 import math
+import numpy as np
 
 def read_json_data(path):
     """
@@ -63,6 +64,8 @@ def generate_cars_list(num_cars):
     points = graph['points']
     edges = graph['edges']
 
+    laplace_scale = 3
+
     cars = {}
     for i in range(num_cars):
         selected_point = select_by_probability(hot_data)
@@ -83,6 +86,12 @@ def generate_cars_list(num_cars):
         x = x1 + (x2 - x1) * random_percent
         y = y1 + (y2 - y1) * random_percent
 
+        noise_x = np.random.laplace(loc=0, scale=laplace_scale)
+        noise_y = np.random.laplace(loc=0, scale=laplace_scale)
+
+        x += noise_x
+        y += noise_y
+
         cars[i] = {'x': x, 'y': y, 'theta': theta}
 
     return cars
@@ -99,6 +108,8 @@ def generate_people_list(num_people):
     graph = read_json_data('data03.json')
     points = graph['points']
 
+    laplace_scale = 3
+
     peoples = []
     for i in range(num_people):
         selected_point = select_by_probability(hot_data)
@@ -108,6 +119,12 @@ def generate_people_list(num_people):
         dx = random.gauss(selected_point_x, 20)
         dy = random.gauss(selected_point_y, 20)
         coord = (dx, dy)
+
+        noise_x = np.random.laplace(loc=0, scale=laplace_scale)
+        noise_y = np.random.laplace(loc=0, scale=laplace_scale)
+
+        dx += noise_x
+        dy += noise_y
 
         peoples.append(coord)
 

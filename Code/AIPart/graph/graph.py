@@ -85,6 +85,33 @@ class Graph(GraphBase):
         people_list = generate_people_list(num_people)
         return people_list
 
+    def get_road_density(self, road_id: int, density_matrix, AgentGroup) -> float:
+        """
+        根据路段ID获取对应区域的人流密度
+        :param road_id: 路段ID
+        :param density_matrix: AgentGroup计算的人流密度矩阵
+        :return: 路段区域的平均人流密度
+        """
+        # 1. 根据road_id获取路段的起点和终点坐标（需结合现有edges数据）
+        edge = self.edges[road_id]
+        start_point = self.points[edge.start_id]
+        end_point = self.points[edge.end_id]
+        start_x, start_y = start_point.x, start_point.y
+        end_x, end_y = end_point.x, end_point.y
+
+        # 2. 计算路段在密度矩阵中的覆盖范围（基于density_scale缩放）
+        density_scale = AgentGroup.density_scale  # 从AgentGroup获取缩放因子
+        min_x = min(start_x, end_x) * density_scale
+        max_x = max(start_x, end_x) * density_scale
+        min_y = min(start_y, end_y) * density_scale
+        max_y = max(start_y, end_y) * density_scale
+
+        # 3. 截取密度矩阵中路段对应的区域并计算平均密度
+        x1, x2 = int(min_x), int(max_x)
+        y1, y2 = int(min_y), int(max_y)
+        road_density = density_matrix[x1:x2, y1:y2].mean().item()
+        return road_density
+
     @property
     def nodes_position(self)->np.ndarray:
         return np.array(self.__positions)
@@ -153,15 +180,77 @@ class Graph(GraphBase):
         处理门点的状态：若门关闭则先打开，然后清除地图上的车辆
         """
         # 遍历所有点，找到类型为门的点
+        tolerance = 2
         for point_id, point in enumerate(self.points):
             if point.type == PointType.gate:
                 # 检查门的当前状态
                 if point.gate_status == GateStatus.close:
                     # 切换门状态为打开
                     point.gate_transition()
-                    # 这里假设存在清除车辆的方法，实际实现需根据车辆存储方式调整
-                    # 示例：若车辆信息存储在某个属性中，如self.cars，则清空
-                    pass
+                    i, j = point.x, point.y
+                    if abs(Graph.car.x - i) < tolerance and abs(Graph.car.y - j) < tolerance:
+                        pass
+
+    def enter_gate(self, cars: list, limit_speed:float) -> dict:
+        """
+        车辆准入算法：仅允许在门点处于打开状态时，车辆进入门控区域
+        :param cars: 车辆字典，格式为[car1, car2, car3...]
+        :return: 处理后的车辆字典，不符合准入条件的车辆被限制进入
+        """
+        tolerance = 2
+        updated_cars = []
+
+        # 获取所有门点信息
+        gate_points = [
+            (point_id, point)
+            for point_id, point in enumerate(self.points)
+            if point.type == PointType.gate
+        ]
+
+        for car in cars:
+            car_x, car_y = car.x, car.y
+            is_blocked = False
+
+            # 检查车辆是否试图进入任何门控区域
+            for gate_id, gate_point in gate_points:
+                gate_x, gate_y = gate_point.x, gate_point.y
+                # 计算车辆到门点的距离
+                distance = math.hypot(car_x - gate_x, car_y - gate_y)
+
+                # 若车辆在门控区域内且门处于关闭状态，阻止进入
+                # 速度超过限速，不准许车辆进入
+                if car_x**2 + car.y**2 > limit_speed**2:
+                    if distance < tolerance and gate_point.gate_status == GateStatus.close:
+                        is_blocked = True
+                        break
+
+            if is_blocked:
+                # 阻止车辆进入：将车辆位置调整到门控区域外，速度置零
+                for gate_id, gate_point in gate_points:
+                    gate_x, gate_y = gate_point.x, gate_point.y
+                    if math.hypot(car_x - gate_x, car_y - gate_y) < tolerance:
+                        # 计算区域外偏移位置（沿远离门点方向偏移tolerance）
+                        dx = car_x - gate_x
+                        dy = car_y - gate_y
+                        if dx == 0 and dy == 0:
+                            # 若车辆正好在门点位置，随机偏移
+                            dx, dy = random.uniform(-1, 0), random.uniform(-1, 0)
+                        norm = math.hypot(dx, dy)
+                        new_x = gate_x + dx / norm * tolerance
+                        new_y = gate_y + dy / norm * tolerance
+                        updated_cars[car.id] = {
+                            'p_x': new_x,
+                            'p_y': new_y,
+                            'v_x': 0,
+                            'v_y': 0,
+                            'angle': car.angle
+                        }
+                        break
+            else:
+                # 允许进入，保持车辆原有状态
+                updated_cars.append(car)
+
+        return updated_cars
 
     def upgrade_weight(self):
         pass

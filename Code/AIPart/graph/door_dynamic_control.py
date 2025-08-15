@@ -1,11 +1,14 @@
 import json
 from Code.AIPart.graph.graph import Graph
+from Code.AIPart.Ren.mainagent import Crowd
 import numpy as np
 
+# crowd = Crowd()
+
 class DoorController:
-    def __init__(self, hot_data_path: str):
+    def __init__(self, hot_data_path: str, graph: Graph):
         # 初始化Graph和热度数据
-        self.graph = Graph()
+        self.graph = graph()
         with open(hot_data_path, 'r', encoding='utf-8') as f:
             self.hot_district = json.load(f)  # 当前热度值
         self.original_hot_district = self.hot_district.copy()  # 初始热度值
@@ -13,8 +16,9 @@ class DoorController:
         self.current_closed_points = set()  # 存储当前处于关闭状态的点ID
         self.current_open_points = set()  # 存储当前处于打开状态的点ID
 
-    def get_point_by_xy(self, target_x, target_y, tolerance=1.1):
+    def get_point_by_xy(self, target_x, target_y, map_square_rate, map_size):
         """根据坐标查找Point对象（封装为类方法）"""
+        tolerance = map_square_rate/map_size + 10
         for point in self.graph.points:
             x_match = abs(point.x - target_x) < tolerance
             y_match = abs(point.y - target_y) < tolerance
@@ -22,7 +26,7 @@ class DoorController:
                 return point
         return None
 
-    def door_dynamic_control(self, map_square_rate: float, person_matrix: np.ndarray, total_num: int):
+    def door_dynamic_control(self, map_square_rate: float, person_matrix: np.ndarray):
         """
         若超越人群阈值，则将热点地区降为0
         :param map_square_rate: 地图缩放率
@@ -37,7 +41,7 @@ class DoorController:
         # 遍历人口密度矩阵，判断每个点的状态
         for i in range(len(person_matrix)):
             for j in range(len(person_matrix[i])):
-                current_density = person_matrix[i][j] * map_square_rate * total_num
+                current_density = person_matrix[i][j] * map_square_rate
                 actual_x = i * map_square_rate
                 actual_y = j * map_square_rate
                 point = self.get_point_by_xy(actual_x, actual_y)
@@ -45,7 +49,7 @@ class DoorController:
                     continue
 
                 # 根据密度判断是否需要关闸/开闸
-                if current_density >= 350:
+                if current_density >= 300 + np.random.laplace(loc=0, scale=25):
                     # 密度过高，需要关闸（且之前未关闭）
                     if point.id not in self.current_closed_points:
                         new_close_points.append(point)
