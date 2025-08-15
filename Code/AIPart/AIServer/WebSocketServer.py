@@ -10,6 +10,7 @@ import asyncio
 import json
 import os
 import sys
+import threading
 from functools import wraps
 
 import websockets
@@ -30,7 +31,11 @@ class WebSocketServer:
             else os.path.abspath(__file__)
         self.observer = None
         self.logger = common_logger
-        self.stop_to_start_map = {4: 3, 6: 5, 8: 7, 10: 9, 12: 11}
+
+        self.clients = {}
+        self.client_lock = threading.Lock()
+        self.event_loop = None
+        self.running = False
 
         # 统一数据处理函数
         self.data_processor = None
@@ -45,6 +50,16 @@ class WebSocketServer:
         self.data_processor = wrapper
         return wrapper
 
+    async def broadcast(self, data):
+        """WebSocket广播机制"""
+        with self.client_lock:
+            for client in list(self.clients.keys()):
+                try:
+                    await client.send(data)
+                except websockets.exceptions.ConnectionClosedError:
+                    self.logger.error(f"【WEB】客户端{self.clients[client]}断开连接，广播失败")
+                    del self.clients[client]
+
     async def _realtime_pusher(self, websocket, stop_event, sim_type):
         """实时数据推送循环"""
         while not stop_event.is_set():
@@ -58,6 +73,9 @@ class WebSocketServer:
         client_address = websocket.remote_address
         client_ip = f"{client_address[0]}:{client_address[1]}"
         self.logger.info(f"【WEB】客户端 {client_ip}连接")
+
+        with self.client_lock:
+            self.clients[websocket] = client_ip
 
         # 管理实时任务：{sim_type: (stop_event, task)}
         realtime_tasks = {}
@@ -129,6 +147,7 @@ class WebSocketServer:
 
     async def start_server(self):
         """启动WebSocket服务器"""
+        self.event_loop = asyncio.get_event_loop()
         if self.debug:
             self.logger.info(f"【WEB】 * WebSocket服务器在开发者模式下运行！")
         else:
@@ -166,6 +185,7 @@ class WebSocketServer:
             self.logger.level = logging.DEBUG
 
         try:
+            self.running = True
             asyncio.run(self.start_server())
         except KeyboardInterrupt:
             self.logger.debug("【WEB】关闭服务器中... ...")

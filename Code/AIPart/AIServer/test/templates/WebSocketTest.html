@@ -223,16 +223,16 @@
                 }
                 // 其他状态码的处理逻辑
                 else if (status === 2) {
-                    message.data = {
+                    message.message = {
                         temperature: 25,
                         wind: 10,
                         airQuality: 80,
                         rain: 0
                     };
                 } else if (status === 10) {
-                    message.data = {
-                        start: "叠翠屏",
-                        end: "月栖滩"
+                    message.message = {
+                        startName: "叠翠屏",
+                        endName: "月栖滩"
                     };
                 } else if (status === 11) {
                     message.data = {
