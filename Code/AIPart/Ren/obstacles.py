@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from Code.AIPart.Ren.config import PRECISION, device
+from Ren.config import PRECISION, device
 
 
 class Obstacle:

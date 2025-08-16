@@ -1,20 +1,31 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import matplotlib
 import torch
-from shtab import Optional
+from io import BytesIO, StringIO
+from PIL import Image
+import base64
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
+import threading
+import time
 
+# 导入项目相关模块
 from Code.AIPart.Ren.agents import AgentGroup
 from Code.AIPart.Ren.obstacles import ObstacleGenerator
 from testmap import obstacles_params, targets, targets_heat, points, MAP_SIZE
 from Code.AIPart.Ren.config import *
 
-# 配置交互后端
-matplotlib.use('TkAgg')
+# 配置非交互式后端，适合服务器环境
+matplotlib.use('Agg')
 # 设置中文显示
 plt.rcParams["font.family"] = ["SimHei"]
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
+
+# 初始化Flask和WebSocket
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'agent_visualization_secret_key'
+socketio = SocketIO(app, cors_allowed_origins="*")  # 允许跨域访问
 
 emergency = [
     ((MAP_SIZE * 0.3, MAP_SIZE * 0.4), 1),
@@ -25,6 +36,7 @@ emergency = [
     ((MAP_SIZE * 0.4, MAP_SIZE * 0.8), 1),
     ((MAP_SIZE * 0.9, MAP_SIZE * 0.3), 0),
 ]
+
 
 # 创建智能体群体
 def create_agents(num_agents,
@@ -51,7 +63,6 @@ agents = create_agents(num_agents,
 fig, ax = plt.subplots(figsize=(12, 10))
 ax.set_xlim(0.0, MAP_SIZE)
 ax.set_ylim(0.0, MAP_SIZE)
-ax.set_title('带惯性特性和智能体间斥力的智能体导航系统')
 ax.set_xlabel('X坐标')
 ax.set_ylabel('Y坐标')
 
@@ -136,18 +147,29 @@ emergency_plot = ax.scatter(
 
 ax.legend()
 
+# 全局变量，用于控制动画帧
+current_frame = 0
+is_running = True
+
 
 # 动画更新函数
 def update(frame):
+    global current_frame
+    current_frame = frame
+
     # 模拟交通灯状态
     if frame < 200:
-        traffic_light = [1,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]  # ID=0红灯
+        traffic_light = [1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                         1]  # ID=0红灯
     elif frame < 400:
-        traffic_light = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]  # ID=1红灯
+        traffic_light = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                         0]  # ID=1红灯
     elif frame < 600:
-        traffic_light = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]  # ID=2红灯
+        traffic_light = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                         1]  # ID=2红灯
     else:
-        traffic_light = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]  # ID=4红灯
+        traffic_light = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                         0]  # ID=4红灯
 
     # 每隔150帧添加和删除智能体
     if frame % 150 == 0 and frame > 0:
@@ -188,7 +210,7 @@ def update(frame):
     if frame % 50 == 0:
         # 更新密度热图
         density_data = agents.get_density().cpu().numpy()
-        print(np.max(density_data),np.min(density_data))
+        # print(np.max(density_data), np.min(density_data))
         density_plot.set_data(density_data.T)  # 转置以正确显示
 
         # 动态调整颜色范围以适应密度变化
@@ -202,14 +224,86 @@ def update(frame):
     return agents_plot, emergency_plot
 
 
+# 生成图像并转换为Base64
+def generate_frame(frame):
+    # 更新当前帧
+    update(frame)
 
-# 运行动画
-animation = FuncAnimation(
-    fig, update,
-    frames=800,
-    interval=50,
-    blit=True
-)
+    # 保存图像到内存缓冲区
+    buf = BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+    buf.seek(0)
 
-plt.tight_layout()
-plt.show()
+    # 转换为Base64编码
+    img = Image.open(buf)
+    img_byte_arr = BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+
+    return img_base64
+
+
+# 定时发送帧数据的线程函数
+def send_frames():
+    global current_frame, is_running
+    frame = 0
+    while is_running:
+        try:
+            # 生成当前帧的图像
+            img_base64 = generate_frame(frame)
+
+            # 发送图像数据到前端
+            socketio.emit('frame_update', {'image': img_base64, 'frame': frame})
+
+            # 控制帧率，每50ms发送一次（约20fps）
+            time.sleep(0.05)
+
+            # 循环播放动画（800帧后重置）
+            frame = (frame + 1) % 800
+        except Exception as e:
+            print(f"发送帧时出错: {e}")
+            # 出错时稍等再重试
+            time.sleep(1)
+
+
+# WebSocket事件处理
+@socketio.on('connect')
+def handle_connect():
+    print('客户端已连接')
+    emit('connection_response', {'message': '已成功连接到服务器'})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('客户端已断开连接')
+
+
+# Flask路由
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+# 主函数
+if __name__ == '__main__':
+    try:
+        # 启动发送帧的线程
+        frame_thread = threading.Thread(target=send_frames, daemon=True)
+        frame_thread.start()
+
+        # 启动Flask-SocketIO服务器，添加允许不安全Werkzeug服务器的参数
+        print("启动服务器，访问 http://localhost:5000 查看可视化结果")
+        socketio.run(
+            app,
+            host='0.0.0.0',
+            port=5000,
+            debug=False,
+            allow_unsafe_werkzeug=True  # 添加此参数解决错误
+        )
+    except KeyboardInterrupt:
+        print("服务器正在关闭...")
+        is_running = False
+        frame_thread.join()
+    finally:
+        plt.close('all')
+

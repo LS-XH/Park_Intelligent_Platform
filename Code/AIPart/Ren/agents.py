@@ -1,9 +1,9 @@
 import numpy as np
 import torch
-from Code.AIPart.Ren.config import device, DENSITY_MATRIX_SIZE, MAX_STEP, UPDATE_DENSITY_STEP, MIN_SPEED, MAX_SPEED, \
+from Ren.config import device, DENSITY_MATRIX_SIZE, MAX_STEP, UPDATE_DENSITY_STEP, MIN_SPEED, MAX_SPEED, \
     INERTIA_WEIGHT_RANGE, SAFE_DISTANCE, AGENT_REPULSION_RADIUS, AGENT_REPULSION_STRENGTH, ANGLE_RANGE_END, \
-    ANGLE_RANGE_START, NUM_ATTEMPTS, target_radius, CHANGE_PROB, evacuate_rate, TRAIN_SET, MODEL_DIR_WEIGHT
-from Code.AIPart.Ren.model import get_correction_vectors, initialize_agent
+    ANGLE_RANGE_START, NUM_ATTEMPTS, target_radius, CHANGE_PROB, evacuate_rate, TRAIN_SET, MODEL_DIR_WEIGHT, USE_MODEL
+from Ren.model import get_correction_vectors, initialize_agent
 
 
 class AgentGroup:
@@ -85,7 +85,7 @@ class AgentGroup:
             if count > 0:
                 target_pos = self.all_targets[i]
                 # 根据目标热度设置生成半径，热度高的目标周围半径更大
-                radius = 50.0 + self.target_heat[i] * 1000.0
+                radius = 50.0 + self.target_heat[i] * 10
                 self.birth(target_pos[0], target_pos[1], radius, count.item())
 
         # 初始化密度矩阵
@@ -555,9 +555,8 @@ class AgentGroup:
         rotated_dir_y = direction_normalized[:, 0] * sin_theta + direction_normalized[:, 1] * cos_theta
         new_direction = torch.stack([rotated_dir_x, rotated_dir_y], dim=1)
 
-        # 更新密度矩阵
+        # 模型预测方向
         if self.update_den_step < 0:
-            # 模型预测方向
             self.model_direction = get_correction_vectors(
                 self.model,
                 obs=self.obstacle_gen.obstacles,
@@ -569,18 +568,19 @@ class AgentGroup:
         else:
             self.update_den_step -= 1
 
+        # 加入模型预测
+        if USE_MODEL:
+            # 确保model_direction是CUDA张量并与new_direction在同一设备上
+            if isinstance(self.model_direction, list):
+                self.model_direction = torch.stack(self.model_direction).to(device)
+            # print("model_direction shape:", self.model_direction.shape)  # 应是 [N, 2]
+            # print("new_direction shape before fusion:", new_direction.shape)  # 应是 [N, 2]
+            if self.model_direction.shape[0] == new_direction.shape[0]:
+                new_direction = new_direction * (1 - MODEL_DIR_WEIGHT) + MODEL_DIR_WEIGHT * self.model_direction
+            # print("DEBUG1 PASS")
+            # print("new_direction shape after fusion:", new_direction.shape)  # 必须是 [N, 2]
 
 
-        # 确保model_direction是CUDA张量并与new_direction在同一设备上
-        if isinstance(self.model_direction, list):
-            self.model_direction = torch.stack(self.model_direction).to(device)
-        self.model_direction = self.model_direction.squeeze(1)
-        print("model_direction shape:", self.model_direction.shape)  # 应是 [N, 2]
-        print("new_direction shape before fusion:", new_direction.shape)  # 应是 [N, 2]
-        if self.model_direction.shape[0] == new_direction.shape[0]:
-            new_direction = new_direction * (1 - MODEL_DIR_WEIGHT) + MODEL_DIR_WEIGHT * self.model_direction
-        print("DEBUG1 PASS")
-        print("new_direction shape after fusion:", new_direction.shape)  # 必须是 [N, 2]
 
 
         # 加入惯性 - 融合当前方向和新计算方向
@@ -608,5 +608,16 @@ class AgentGroup:
         if self.update_den_step < 0:
             self._update_density()
             self.update_den_step = UPDATE_DENSITY_STEP
+            # 更新训练模型
+            if TRAIN_SET:
+                self.model = initialize_agent(
+                    obs=self.obstacle_gen.obstacles,
+                    points_coords=self.obstacle_gen.intersection_points,
+                    agents_pos=self.positions,
+                    targets_coords=self.targets,
+                    train_first=TRAIN_SET
+                )
         else:
             self.update_den_step -= 1
+
+
