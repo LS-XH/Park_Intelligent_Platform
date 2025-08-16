@@ -77,12 +77,34 @@ class Graph(GraphBase):
         self.load_json("%s\\graph\\data.json"%os.getcwd())
         #加载密度数据
 
-
-    def initialize_car(self, num_cars=None):
+    def point_to_segment_distance(px, py, x1, y1, x2, y2):
         """
-        初始化车的位置，根据固定的热点数据随机生成
-        :param num_cars:    生成的车的数量
-        :return:            字典，键表示车的ID，值表示车的坐标
+        :param px: 车的x坐标
+        :param py: 车的y坐标
+        :param x1: 起点x坐标
+        :param y1: 起点y坐标
+        :param x2: 终点x坐标
+        :param y2: 终点y坐标
+        :return: 返回车到边的最短距离
+        计算点(px, py)到线段(x1,y1)-(x2,y2)的最短距离
+        """
+        # 线段向量
+        dx = x2 - x1
+        dy = y2 - y1
+        if dx == 0 and dy == 0:  # 线段为点时，直接返回点到点的距离
+            return math.hypot(px - x1, py - y1)
+        # 计算点在 segment 上的投影比例（0~1之间为线段上的投影）
+        t = ((px - x1) * dx + (py - y1) * dy) / (dx ** 2 + dy ** 2)
+        t = max(0, min(1, t))  # 限制t在[0,1]范围内
+        # 投影点坐标
+        proj_x = x1 + t * dx
+        proj_y = y1 + t * dy
+        # 返回点到投影点的距离
+        return math.hypot(px - proj_x, py - proj_y)
+
+    def initialize_car(self, num_cars):
+        """
+        初始化车的位置
         """
         cars_list = generate_cars_list(num_cars)
         return cars_list
@@ -95,32 +117,119 @@ class Graph(GraphBase):
         people_list = generate_people_list(num_people)
         return people_list
 
-    def get_road_density(self, road_id: int, density_matrix, AgentGroup) -> float:
+    def get_road_density(self, start_id: int, end_id: int, density_matrix, density_scale: float) -> float:
         """
-        根据路段ID获取对应区域的人流密度
-        :param road_id: 路段ID
+        根据起点ID和终点ID获取对应路段的人流密度
+        :param start_id: 路段起点ID
+        :param end_id: 路段终点ID
         :param density_matrix: AgentGroup计算的人流密度矩阵
+        :param density_scale: 密度缩放率
         :return: 路段区域的平均人流密度
         """
-        # 1. 根据road_id获取路段的起点和终点坐标（需结合现有edges数据）
-        edge = self.edges[road_id]
-        start_point = self.points[edge.start_id]
-        end_point = self.points[edge.end_id]
+        # 1. 根据start_id和end_id获取路段的起点和终点坐标
+        start_point = self.points[start_id]
+        end_point = self.points[end_id]
         start_x, start_y = start_point.x, start_point.y
         end_x, end_y = end_point.x, end_point.y
 
-        # 2. 计算路段在密度矩阵中的覆盖范围（基于density_scale缩放）
-        density_scale = AgentGroup.density_scale  # 从AgentGroup获取缩放因子
-        min_x = min(start_x, end_x) * density_scale
-        max_x = max(start_x, end_x) * density_scale
-        min_y = min(start_y, end_y) * density_scale
-        max_y = max(start_y, end_y) * density_scale
+        # 2. 如果起点和终点相同，返回0密度
+        if start_x == end_x and start_y == end_y:
+            return 0.0
 
-        # 3. 截取密度矩阵中路段对应的区域并计算平均密度
-        x1, x2 = int(min_x), int(max_x)
-        y1, y2 = int(min_y), int(max_y)
-        road_density = density_matrix[x1:x2, y1:y2].mean().item()
-        return road_density
+        # 3. 将坐标转换为密度矩阵中的网格坐标
+        grid_start_x = int(round(start_x / density_scale))
+        grid_start_y = int(round(start_y / density_scale))
+        grid_end_x = int(round(end_x / density_scale))
+        grid_end_y = int(round(end_y / density_scale))
+
+        # 4. 使用Bresenham算法获取线段经过的所有网格点
+        def bresenham_line(x0, y0, x1, y1):
+            """生成从(x0,y0)到(x1,y1)的线段经过的所有网格点"""
+            points = []
+            dx = abs(x1 - x0)
+            dy = abs(y1 - y0)
+            x, y = x0, y0
+            sx = 1 if x1 > x0 else -1
+            sy = 1 if y1 > y0 else -1
+
+            # 处理水平或垂直线的情况
+            if dx == 0:  # 垂直线
+                while y != y1:
+                    points.append((x, y))
+                    y += sy
+                points.append((x, y))
+            elif dy == 0:  # 水平线
+                while x != x1:
+                    points.append((x, y))
+                    x += sx
+                points.append((x, y))
+
+
+
+
+            else:  # 斜线
+                err = dx - dy
+                while True:
+                    points.append((x, y))
+                    if x == x1 and y == y1:
+                        break
+                    e2 = 2 * err
+                    # （1）判断是否沿 x 方向移动：if e2 > -dy
+                    # 当e2 > -dy时，说明x 方向的累积误差已经足够大，需要沿 x 方向移动一步（否则线段会偏离 x 方向太远）。
+                    if e2 > -dy:
+                        # 移动后，误差需要更新：err -= dy（减去 y 方向总距离，平衡误差累积）。
+                        # 同时，x 坐标沿sx方向移动一步：x += sx。
+                        err -= dy
+                        x += sx
+                        # （2）判断是否沿 y 方向移动：if e2 < dx
+                        # 当e2 < dx时，说明y 方向的累积误差已经足够大，需要沿 y 方向移动一步（否则线段会偏离 y 方向太远）。
+                    if e2 < dx:
+                        # 移动后，误差需要更新：err += dx（加上 x 方向总距离，平衡误差累积）。
+                        err += dx
+                        # 同时，y 坐标沿sy方向移动一步：y += sy。
+                        y += sy
+            return points
+
+        # 获取线段经过的所有网格点
+        line_points = bresenham_line(grid_start_x, grid_start_y, grid_end_x, grid_end_y)
+
+        # 5. 过滤掉超出密度矩阵范围的点
+        valid_points = []
+        max_row, max_col = density_matrix.shape
+        for (x, y) in line_points:
+            if 0 <= x < max_row and 0 <= y < max_col:
+                valid_points.append((x, y))
+
+        # 6. 如果没有有效点，返回0密度
+        if not valid_points:
+            return 0.0
+
+        # 7. 计算所有有效网格点的平均密度
+        total_density = 0.0
+        for (x, y) in valid_points:
+            total_density += density_matrix[x, y].item()
+
+        return total_density / len(valid_points)
+
+    def get_road_density_matrix(self, density_matrix, density_scale: float) -> np.ndarray:
+        """
+        生成点i到点j的边密度矩阵
+        第i行第j列的元素表示从点i到点j的边的人群密度
+        若不存在从i到j的边，则值为0
+        """
+        # 初始化矩阵，大小为点的数量×点的数量，初始值为0
+        density_matrix_ij = np.zeros((self.num_points, self.num_points), dtype=np.float32)
+
+        # 遍历所有边，计算密度并填充矩阵
+        for edge in self.edges:
+            start_id = edge["start_id"]
+            end_id = edge["end_id"]
+            # 计算该边的密度
+            density = self.get_road_density(start_id, end_id, density_matrix, density_scale)
+            # 填充矩阵
+            density_matrix_ij[start_id, end_id] = density
+
+        return density_matrix_ij
 
     @property
     def nodes_position(self)->np.ndarray:
@@ -211,13 +320,16 @@ class Graph(GraphBase):
                     # 切换门状态为打开
                     point.gate_transition()
                     i, j = point.x, point.y
-                    if abs(Graph.car.x - i) < tolerance and abs(Graph.car.y - j) < tolerance:
+                    if abs(self.car.x - i) < tolerance and abs(self.car.y - j) < tolerance:
                         pass
 
-    def enter_gate(self, cars: list, limit_speed:float) -> dict:
+    def enter_gate(self, cars: list, limit_speed:float, density_matrix:ndarray, density_scale:float, density_threshold: float=0.8) -> dict:
         """
         车辆准入算法：仅允许在门点处于打开状态时，车辆进入门控区域
         :param cars: 车辆字典，格式为[car1, car2, car3...]
+        :param limit_speed:限速
+        :param density_matrix:人流密度矩阵
+        :param density_threshold:人流密度阈值，超过时限制车辆入内
         :return: 处理后的车辆字典，不符合准入条件的车辆被限制进入
         """
         tolerance = 2
@@ -233,6 +345,20 @@ class Graph(GraphBase):
         for car in cars:
             car_x, car_y = car.x, car.y
             is_blocked = False
+
+            if not is_blocked and hasattr(car, 'target_road_ids'):
+                for road_id in car.target_road_ids:
+                    if road_id < 0 or road_id >= len(self.edges):
+                        continue  # 无效路段ID跳过
+                    edge = self.edges[road_id]  # 获取路段对象
+                    start_id = edge.start_id  # 提取起点ID
+                    end_id = edge.end_id  # 提取终点ID
+
+                    road_density = self.get_road_density(start_id,end_id,density_matrix,density_scale)
+                    if road_density > density_threshold:
+                        is_blocked = True
+                        print(f"车辆{car.id}被限制进入：路段{road_id}人流密度过高（{road_density:.2f}）")
+                        break
 
             # 检查车辆是否试图进入任何门控区域
             for gate_id, gate_point in gate_points:
@@ -269,6 +395,7 @@ class Graph(GraphBase):
                             'angle': car.angle
                         }
                         break
+
             else:
                 # 允许进入，保持车辆原有状态
                 updated_cars.append(car)
@@ -331,7 +458,7 @@ class Graph(GraphBase):
         j = np.clip(np.round(J / scale).astype(int), 0, DENSITY_MATRIX_SIZE - 1)
 
         # 利用广播机制快速填充目标矩阵
-        dst_matrix = density_matrix[i[:, np.newaxis], j]  # i[:, np.newaxis]将I转为列向量，与J广播
+        dst_matrix = density_matrix[i[:, np.newaxis], j] .0 .#0 i[:, np.newaxis]将I转为列向量，与J广播
 
         return dst_matrix
 
