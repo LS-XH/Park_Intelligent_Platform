@@ -29,7 +29,7 @@ class Cars(Delegation,CarsBase):
         Delegation.__init__(self,[])
 
         for car in cars:
-            self.add_car_by_road(car[0],car[1],car[2],car[3],5)
+            self.add_car_by_road(car[0],car[1],car[2],car[3],car[4])
 
 
         # for car in cars:

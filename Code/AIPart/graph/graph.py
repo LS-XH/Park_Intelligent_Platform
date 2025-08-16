@@ -323,7 +323,7 @@ class Graph(GraphBase):
                     if abs(self.car.x - i) < tolerance and abs(self.car.y - j) < tolerance:
                         pass
 
-    def enter_gate(self, cars: list, limit_speed:float, density_matrix:ndarray, density_scale:float, density_threshold: float=0.8) -> dict:
+    def enter_gate(self, cars: list, limit_speed:float, density_matrix:np.ndarray, density_scale:float, density_threshold: float=0.8) -> dict:
         """
         车辆准入算法：仅允许在门点处于打开状态时，车辆进入门控区域
         :param cars: 车辆字典，格式为[car1, car2, car3...]
@@ -458,7 +458,7 @@ class Graph(GraphBase):
         j = np.clip(np.round(J / scale).astype(int), 0, DENSITY_MATRIX_SIZE - 1)
 
         # 利用广播机制快速填充目标矩阵
-        dst_matrix = density_matrix[i[:, np.newaxis], j] .0 .#0 i[:, np.newaxis]将I转为列向量，与J广播
+        dst_matrix = density_matrix[i[:, np.newaxis], j]#0 i[:, np.newaxis]将I转为列向量，与J广播
 
         return dst_matrix
 
@@ -639,7 +639,7 @@ class Graph(GraphBase):
                         "centre": centre if centre is not None else None,
                         "from":(-vertical_from)*radius,
                         "to":(-vertical_to)*radius,
-                        "lane":lane
+                        "lane":lane if lane < 3 else 2
                     }
                     self.__road_basic[self.point_name2id[from_point.name],cross_id]=np.array([[vector_from[0],vertical_from[0]],
                                                                                       [vector_from[1],vertical_from[1]]])
