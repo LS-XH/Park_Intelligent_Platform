@@ -79,11 +79,9 @@ def initialize_cars(num_cars):
 
     # 在某一个路段生成多辆车
     random_point_id = random.randint(0, len(points_data) - 1)
-    random_point_id = 0
     random_point = points_data[random_point_id]
     random_point_neighbor = find_neighbor_node(random_point_id, edges_data)
     random_point_neighbor = random.choice(random_point_neighbor)
-    random_point_neighbor = 1
     start_x, start_y = random_point['x'], random_point['y']
     end_x, end_y = points_data[random_point_neighbor]['x'], points_data[random_point_neighbor]['y']
     start_theta = math.degrees(math.atan2(end_y - start_y, end_x - start_x)) % 360
