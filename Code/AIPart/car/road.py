@@ -167,6 +167,8 @@ class CAVRoad(Road):
             car.p_x = car.p_x - self.start_x
             car.p_y = car.p_y - self.start_y
 
+
+
         # 添加变道车辆到所有lane托管
         # 三者共同托管
         for car in self.inchange:
