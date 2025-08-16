@@ -124,7 +124,7 @@ class CAVRoad(Road):
         self.end_id = end_id
 
         # 线性变换到当前路的start_point
-        self.tsf_start = RigidBody(p_x=self.graph.points[self.end_id].x,p_y=self.graph.points[self.end_id].y).transform(self.graph.road_basic[self.start_id,self.end_id])
+        self.tsf_start = RigidBody(p_x=self.graph.points[self.start_id].x,p_y=self.graph.points[self.start_id].y).transform(self.graph.road_basic[self.start_id,self.end_id])
         # 线性变换到当前路的end_point
         self.tsf_end = RigidBody(p_x=self.graph.points[self.end_id].x,p_y=self.graph.points[self.end_id].y).transform(self.graph.road_basic[self.start_id,self.end_id])
 
@@ -162,12 +162,13 @@ class CAVRoad(Road):
         Delegation.append(self,car)
 
     def simulate(self,dt:float=0.1):
-        for car in self.cars:
+        for car in self.all_cars:
             car.vector_basis = (self.graph.road_basic[self.start_id,self.end_id])
             car.p_x = car.p_x - self.start_x
             car.p_y = car.p_y - self.start_y
 
         # 添加变道车辆到所有lane托管
+        # 三者共同托管
         for car in self.inchange:
             for column in self.cavs:
                 column.append(car)
@@ -184,7 +185,6 @@ class CAVRoad(Road):
 
         # 计算变道车辆
         for car in self.inchange:
-            print(car.obj_lane)
             self.cavs[car.obj_lane].simulate_one(dt=dt,obj=car)
 
             # 抑制y
@@ -206,17 +206,6 @@ class CAVRoad(Road):
                 self.inchange.remove(car)
 
 
-
-
-
-
-
-        for car in self.cars:
-            car.p_x = car.p_x + self.start_x
-            car.p_y = car.p_y + self.start_y
-            car.vector_basis = (np.array([[1,0],[0,1]]))
-
-
         # 超过停止线，从此托管中移除，并返回父托管
         res = []
         for car in self.cars:
@@ -226,5 +215,14 @@ class CAVRoad(Road):
                 self.inchange.remove(car)
                 for column in self.cavs:
                     column.cars.remove(car)
+
+
+        for car in self.all_cars:
+            car.p_x = car.p_x + self.start_x
+            car.p_y = car.p_y + self.start_y
+            car.vector_basis = (np.array([[1,0],[0,1]]))
+
+
+
 
         return res

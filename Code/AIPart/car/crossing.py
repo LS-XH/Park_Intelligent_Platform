@@ -34,13 +34,13 @@ class Crossing(Delegation):
         self.step_tick = []
 
 
-    def recieve(self,transfer:Car):
+    def append(self,transfer:Car):
         self.step_tick.append(0)
-        Delegation.recieve(self,transfer)
+        Delegation.append(self,transfer)
 
-    def send(self,transfer:Car):
+    def back(self,transfer:Car):
         del self.step_tick[self.cars.index(transfer)]
-        Delegation.send(self,transfer)
+        Delegation.back(self,transfer)
 
 
 

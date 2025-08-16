@@ -133,7 +133,7 @@ class Delegation:
 
     def append(self,car:Car):
         """
-        新增元素
+        新增元素,（接收）
         :param car:
         :return:
         """
@@ -141,9 +141,9 @@ class Delegation:
             self.cars.append(car)
             self.all_cars.append(car)
 
-    def delete(self,car:Car):
+    def back(self,car:Car):
         """
-        删除元素
+        返回父委托的需要调用函数
         :param car:
         :return:
         """
@@ -152,16 +152,26 @@ class Delegation:
             self.all_cars.remove(car)
 
 
-    def recieve(self,transfer:Car):
-        self.cars.append(transfer)
-
     def send(self,transfer:Car):
+        """
+        转移到子委托后，调用此函数，从空闲对象中删除
+        :param transfer:
+        :return:
+        """
         self.cars.remove(transfer)
 
 
     def transfer(self,transfer:Car,obj_delegation:'Delegation'):
+        """
+        委托间对象传递
+        在当前委托，将会把对象从空闲对象中删除
+        在子委托中，将会新增对象
+        :param transfer:
+        :param obj_delegation:
+        :return:
+        """
         if transfer in self.cars:
-            obj_delegation.recieve(transfer)
+            obj_delegation.append(transfer)
             self.send(transfer)
 
 
