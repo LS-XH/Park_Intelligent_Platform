@@ -210,6 +210,16 @@ class GraphBase(ABC):
         pass
     @property
     @abstractmethod
+    def road_basic(self)->np.ndarray:
+        """
+        道路向量基底矩阵
+        [start_id,end_id,,]:[[x1,x2],[y1,y2]]
+
+        :return:
+        """
+        pass
+    @property
+    @abstractmethod
     def crossing_turn(self)->np.ndarray:
         """
         每个路口，每个道路的转向时行驶圆弧路径，为四维矩阵
@@ -218,6 +228,7 @@ class GraphBase(ABC):
         [cross_id,from_id,to_id]:{circle_x,circle_y,start_angle,end_angle}
         :return:
         """
+        pass
     @property
     @abstractmethod
     def traffic_light(self) -> np.ndarray:

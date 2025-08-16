@@ -225,18 +225,9 @@ class Road(Delegation):
         return res
 
 class CarsBase(ABC):
-    @abstractmethod
-    def generate_a(self) -> Tuple[float, float]:
-        pass
-
     @property
     @abstractmethod
     def car_positions(self):
-        pass
-
-    @property
-    @abstractmethod
-    def car_angles(self):
         pass
 
     @abstractmethod

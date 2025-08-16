@@ -5,6 +5,9 @@ import random
 import numpy as np
 
 
+# random.seed(42)
+
+
 def load_json(filename):
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -71,32 +74,34 @@ def generate_random_with_gap(start, stop, num, min_gap):
 def initialize_cars(num_cars):
     cars = []
     map_data = load_json("./graph/data.json")
-    hot_data = load_json("./graph/hot_data.json")
     points_data = map_data["points"]
     edges_data = map_data["edges"]
 
     # 在某一个路段生成多辆车
     random_point_id = random.randint(0, len(points_data) - 1)
+    random_point_id = 0
     random_point = points_data[random_point_id]
     random_point_neighbor = find_neighbor_node(random_point_id, edges_data)
     random_point_neighbor = random.choice(random_point_neighbor)
+    random_point_neighbor = 1
     start_x, start_y = random_point['x'], random_point['y']
     end_x, end_y = points_data[random_point_neighbor]['x'], points_data[random_point_neighbor]['y']
     start_theta = math.degrees(math.atan2(end_y - start_y, end_x - start_x)) % 360
     first_generate_num_cars = random.randint(10, 20)
-    random_percent = generate_random_with_gap(0.2, 0.8, first_generate_num_cars, 0.01)
+    random_percent = generate_random_with_gap(0.1, 0.5, first_generate_num_cars, 0.01)
 
     for i in range(first_generate_num_cars):
-        x = start_x + (end_x - start_x) * random_percent[i]
-        y = start_y + (end_y - start_y) * random_percent[i]
-        cars.append([x, y, start_theta, random_point_neighbor])
+        random_destination_id = random.randint(0, len(points_data) - 1)
+        cars.append([random_point_id, random_point_neighbor, random.choice([0, 1, 2]), random_percent[i], random_destination_id])
 
     # 随机生成其他车辆
     other_generate_num_cars = num_cars - first_generate_num_cars
     for i in range(other_generate_num_cars):
         random_start_id = random.randint(0, len(points_data) - 1)
+        random_point = points_data[random_start_id]
         random_end_id = find_neighbor_node(random_start_id, edges_data)
         random_end_id = random.choice(random_end_id)
+
         start_x, start_y = random_point['x'], random_point['y']
         end_x, end_y = points_data[random_end_id]['x'], points_data[random_end_id]['y']
         theta = math.degrees(math.atan2(end_y - start_y, end_x - start_x)) % 360
@@ -104,14 +109,15 @@ def initialize_cars(num_cars):
 
         car_x = start_x + (end_x - start_x) * random_percent
         car_y = start_y + (end_y - start_y) * random_percent
+        random_destination_id = random.randint(0, len(points_data) - 1)
 
-        cars.append([car_x, car_y, theta, random_end_id])
+        cars.append([random_start_id, random_end_id, random.choice([0, 1, 2]), random_percent, random_destination_id])
 
     return cars
 
 
 def cars_to_calculate(cars):
-    return [(sublist[0], sublist[1], sublist[3]) for sublist in cars]
+    return [(sublist[0], sublist[1], sublist[2], sublist[3], sublist[4]) for sublist in cars]
 
 
 def cars_to_unity(cars):
@@ -128,3 +134,19 @@ if __name__ == '__main__':
     my_cars = initialize_cars(30)
     my_cars = cars_to_calculate(my_cars)
     print(my_cars)
+    # from matplotlib import pyplot as plt
+    #
+    # my_cars = initialize_cars(30)
+    # my_cars = cars_to_calculate(my_cars)
+    # data = load_json("./graph/data.json")
+    # points_data = data["points"]
+    #
+    # for point in points_data:
+    #     x, y = point['x'], point['y']
+    #     plt.scatter(x, y, c='r', s=20)
+    #
+    # for car in my_cars:
+    #     x, y = car[0], car[1]
+    #     plt.scatter(x, y, c='b', s=5)
+    #
+    # plt.show()

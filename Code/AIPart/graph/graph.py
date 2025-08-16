@@ -23,6 +23,7 @@ GREEN_LIGHT_TIMES = 27 # 绿灯时间
 YELLOW_LIGHT_TIMES = 3 # 黄灯时间
 ALLOW_LIGHT_TIMES = GREEN_LIGHT_TIMES+YELLOW_LIGHT_TIMES # 允许通行时间
 ROAD_WIDTH = 3 * 6
+LANE_WIDTH = 3
 
 
 class TrafficLightStatue(Enum):
@@ -55,6 +56,8 @@ class Graph(GraphBase):
         self.__cut_length = np.empty((0,0),dtype=float)
         # 路口转向路径矩阵
         self.__crossing_turn = np.empty((0,0),dtype=float)
+        # 路口坐标基底矩阵
+        self.__road_basic = np.empty((0,0,0,0),dtype=float)
         #红绿灯矩阵
         self.__traffic_light = np.empty((0,0),dtype=float)
 
@@ -149,6 +152,9 @@ class Graph(GraphBase):
     @property
     def cut_length(self)->np.ndarray:
         return np.array(self.__cut_length)
+    @property
+    def road_basic(self)->np.ndarray:
+        return np.array(self.__road_basic)
     @property
     def crossing_turn(self)->np.ndarray:
         return np.array(self.__crossing_turn)
@@ -473,6 +479,7 @@ class Graph(GraphBase):
 
         # 初始化turn
         self.__crossing_turn = np.empty((len(self.points), len(self.points),len(self.points)), dtype=dict)
+        self.__road_basic = np.zeros((len(self.points), len(self.points), 2, 2), dtype=float)
         for cross_id, cross_point in enumerate(self.points):
             # 遍历cross列，即为到达这个路口的点
             if cross_id == 30:
@@ -485,7 +492,6 @@ class Graph(GraphBase):
                 vertical_from *= np.cross(vector_from, vertical_from)   # 用于更为逆时针
 
                 # 遍历cross行，即为到从这个路口出发的点，用from，to两向量正角度来按照角度排序（to的逆时针排序，即车道从lane0到lane2，先右转再左转）
-                ttt = sorted([self.points[point_id] for point_id, degree in enumerate(self.degree[cross_id, :]) if degree != 0 and point_id != self.point_name2id[from_point.name]],key = lambda to_point:np.cross(cross_point.position-from_point.position,to_point.position-cross_point.position).item())
                 for lane,to_point in enumerate(sorted([self.points[point_id] for point_id, degree in enumerate(self.degree[cross_id, :]) if degree != 0 and point_id != self.point_name2id[from_point.name]],key = lambda to_point:np.cross(cross_point.position-from_point.position,to_point.position-cross_point.position).item())):
                     # to法向量
                     vector_to = (to_point.position - cross_point.position)/self.length[cross_id,self.point_name2id[to_point.name]]
@@ -510,6 +516,10 @@ class Graph(GraphBase):
                         "from":(-vertical_from)*radius,
                         "to":(-vertical_to)*radius
                     }
+                    self.__road_basic[self.point_name2id[from_point.name],cross_id]=np.array([[vector_from[0],vertical_from[0]],
+                                                                                      [vector_from[1],vertical_from[1]]])
+                    self.__road_basic[cross_id,self.point_name2id[to_point.name]]=np.array([[vector_to[0],vertical_to[0]],
+                                                                                      [vector_to[1],vertical_to[1]]])
         # 初始化traffic_light
         self.__traffic_light = np.zeros((len(self.points), len(self.points)), dtype=float)
         for end_id,end_point in enumerate(self.points):
