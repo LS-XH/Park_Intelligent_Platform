@@ -50,7 +50,7 @@ class Graph(GraphBase):
         # 限速矩阵
         self.__limit_speed = np.empty((0,0),dtype=float)
         # 路口半径
-        self.__corssing_radius = np.empty((0,0),dtype=float)
+        self.__crossing_radius = np.empty((0, 0), dtype=float)
         # 截断距离
         self.__cut_length = np.empty((0,0),dtype=float)
         # 路口转向路径矩阵
@@ -145,7 +145,7 @@ class Graph(GraphBase):
 
     @property
     def corssing_radius(self)->np.ndarray:
-        return np.array(self.__corssing_radius)
+        return np.array(self.__crossing_radius)
     @property
     def cut_length(self)->np.ndarray:
         return np.array(self.__cut_length)
@@ -450,7 +450,7 @@ class Graph(GraphBase):
         self.__limit_speed += self.__limit_speed.T
 
         # 初始化radius
-        self.__corssing_radius = np.zeros(len(self.points), dtype=float)
+        self.__crossing_radius = np.zeros(len(self.points), dtype=float)
         for cross_id,cross_point in enumerate(self.points):
             # 遍历cross列，即为到达这个路口的点
             for from_point in [self.points[point_id] for point_id,degree in enumerate(self.degree[:, cross_id]) if degree!=0]:
@@ -463,13 +463,13 @@ class Graph(GraphBase):
                     l2 = np.linalg.norm(cross_point.position - to_point.position)
                     cos = (l1**2+l2**2-l3**2)/(2*l1*l2)
                     radius = ROAD_WIDTH/(2*np.sqrt((1-cos)/2))
-                    if self.__corssing_radius[cross_id] == 0 or self.__corssing_radius[cross_id] > radius:self.__corssing_radius[cross_id] = radius
+                    if self.__crossing_radius[cross_id] == 0 or self.__crossing_radius[cross_id] > radius:self.__crossing_radius[cross_id] = radius
 
         # 初始化cut_length
         self.__cut_length = np.array(self.__length.copy())
         for start_id,row in enumerate(self.__cut_length):
             for end_id,item in enumerate(row):
-                self.__cut_length[start_id,end_id] -= self.__corssing_radius[start_id]-self.__corssing_radius[end_id]
+                self.__cut_length[start_id,end_id] -= self.__crossing_radius[start_id] - self.__crossing_radius[end_id]
 
         # 初始化turn
         self.__crossing_turn = np.empty((len(self.points), len(self.points),len(self.points)), dtype=dict)
@@ -503,10 +503,12 @@ class Graph(GraphBase):
                         centre = None
                     if self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] is not None:
                         a = 1
+
+                    radius = np.linalg.norm(centre-point_s)
                     self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] = {
-                        "centre": centre.tolist() if centre is not None else None,
-                        "from":vector_from.tolist(),
-                        "to":vector_to.tolist()
+                        "centre": centre if centre is not None else None,
+                        "from":(-vertical_from)*radius,
+                        "to":(-vertical_to)*radius
                     }
         # 初始化traffic_light
         self.__traffic_light = np.zeros((len(self.points), len(self.points)), dtype=float)

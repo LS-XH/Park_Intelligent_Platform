@@ -152,10 +152,17 @@ class Delegation:
             self.all_cars.remove(car)
 
 
+    def recieve(self,transfer:Car):
+        self.cars.append(transfer)
+
+    def send(self,transfer:Car):
+        self.cars.remove(transfer)
+
+
     def transfer(self,transfer:Car,obj_delegation:'Delegation'):
         if transfer in self.cars:
-            obj_delegation.cars.append(transfer)
-            self.cars.remove(transfer)
+            obj_delegation.recieve(transfer)
+            self.send(transfer)
 
 
 

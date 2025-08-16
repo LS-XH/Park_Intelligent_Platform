@@ -35,7 +35,7 @@ class Cars(Delegation,CarsBase):
 
         self.road_delegation = np.ndarray(shape=(self.road.shape[0],self.road.shape[0]),dtype=Road)
         for row in range(self.road.shape[0]):
-            self.crossing_delegation = Cro
+            self.crossing_delegation = Crossing(row)
 
             for col in range(self.road.shape[0]):
                 if self.road[row][col] != 0:
@@ -96,7 +96,7 @@ class Cars(Delegation,CarsBase):
                     back_car.cross_id = self.path[car_id][1]
                     back_car.to_id = self.path[car_id][2]
 
-                    self.crossing_delegation[self.path[car_id][1]].append(back_car)
+                    self.crossing_delegation[self.path[car_id][1]].recieve(back_car)
 
                     # 已从end中出来，所以删除start，end将成为下次的start（删除走完的路径部分）
                     del self.path[car_id][0]
