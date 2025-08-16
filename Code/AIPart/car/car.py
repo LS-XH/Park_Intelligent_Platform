@@ -17,32 +17,40 @@ from Algorithm.bidirectional_dijkstra import bidirectional_dijkstra as find_road
 import Interface
 import car.tendency as td
 from graph import Graph
+from graph.graph import LANE_WIDTH
 
 
 class Cars(Delegation,CarsBase):
-    def __init__(self,graph:Graph,cars:list[Car]):
-        Delegation.__init__(self,cars)
-
-
-
+    def __init__(self,graph:Graph,cars:list):
+        self.graph = graph
         self.path = []
 
+        Delegation.__init__(self,[])
+
+        for car in cars:
+            self.add_car_by_road(car[0],car[1],car[2],car[3],5)
 
 
-        self.graph = graph
+        # for car in cars:
+        #     self.add_car(Car(x=car[0],y=car[1],id=str(len(self.all_cars))),car[2])
+
+
 
         self.road = self.graph.degree.copy()
 
+
+        # 初始化 road
         self.road_delegation = np.ndarray(shape=(self.road.shape[0],self.road.shape[0]),dtype=Road)
+        # 初始化crossing
+        self.crossing_delegation = np.ndarray(shape=(len(self.road)),dtype=Road)
         for row in range(self.road.shape[0]):
-            self.crossing_delegation = Crossing(row)
+            self.crossing_delegation[row] = Crossing(point_id=row,graph=self.graph,cars = [])
 
             for col in range(self.road.shape[0]):
                 if self.road[row][col] != 0:
-                    self.road_delegation[row,col] = CAVRoad(graph = self.graph,cars=[])
+                    self.road_delegation[row,col] = CAVRoad(graph = self.graph,cars=[],start_id=row,end_id=col)
 
 
-        self.crossing_delegation = np.ndarray(shape=(len(self.road)),dtype=Road)
 
 
 
@@ -71,19 +79,19 @@ class Cars(Delegation,CarsBase):
                         # 计算点到直线距离，小于2
                         if abs(distance)<Car.lane_length + distance_delta:
                             return (end_id,start_id) if distance > 0 else (start_id,end_id)
-
         return None
 
     def simulate(self,dt=0.01):
         # 通过路径，将闲置的车辆添加到对应道路的委托
         for car in self.cars:
             path = self.path[self.all_cars.index(car)]
-            self.transfer(car,self.road_delegation[path[0],path[1]].item())
+            self.transfer(car,self.road_delegation[path[0],path[1]])
 
 
         # 执行road托管
         for s_id,row in enumerate(self.road_delegation):
             for e_id,road in enumerate(row):
+                if road is None:continue
                 # 执行委托
                 backs:[] = road.simulate(dt)
 
@@ -120,21 +128,26 @@ class Cars(Delegation,CarsBase):
 
 
 
-    def add_car(self,car:Car,end_id):
+    def add_car(self,car:Car,destination,road=None):
         # 新增车辆
         if car not in self.all_cars:
-            road = self.get_road(car)
+            if road is None: road = self.get_road(car)
             if road is None: raise Exception("Car is not on any road")
 
             # 新增车到列表
             self.append(car)
             # 新增路径
-            self.path.append(find_road(self.graph.length,road[1],end_id)[0])
-
-
-
+            self.path.append([road[0]]+find_road(self.graph.length,road[1],destination))
         else:
             return
+
+
+    def add_car_by_road(self,s_id,e_id,lane,process,destination):
+        point = RigidBody(self.graph.points[s_id].x,self.graph.points[s_id].y)
+        point.transform(self.graph.road_basic[s_id,e_id])
+        point.p_x += self.graph.length[s_id,e_id] * process
+        point.p_y += (lane+0.5) * LANE_WIDTH
+        self.add_car(car = Car(x=point.p_x,y=point.p_y),destination=destination,road=[s_id,e_id])
 
     @property
     def car_positions(self):
@@ -142,9 +155,9 @@ class Cars(Delegation,CarsBase):
         for car in self.all_cars:
             car.transform()
             res.append({
-                "x":car.position.p_x,
-                "y":car.position.p_y,
-                "angle":np.degrees(np.arctan(car.velocity.p_y/car.velocity.p_x))
+                "x":car.p_x,
+                "y":car.p_y,
+                "theta":np.degrees(np.arctan(car.v_y/car.v_x if car.v_x!=0 else 0)).item()
             })
 
         return res

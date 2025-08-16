@@ -9,7 +9,7 @@ from car.cavcar import Car,Road
 from Interface.car import CarsBase,Delegation
 import Interface
 import car.tendency as td
-
+from graph.graph import ROAD_WIDTH
 
 
 
@@ -114,11 +114,29 @@ class CAVRoad(Road):
             self,
             graph:Optional[Interface.GraphBase],
             cars:list[Car]=(),
-            stop_line:float=200
+            stop_line:float=200,
+            start_id:int=0,
+            end_id:int=0,
     ):
         super().__init__(graph,cars)
         self.graph = graph
-        self.stop_line = stop_line
+        self.start_id = start_id
+        self.end_id = end_id
+
+        # 线性变换到当前路的start_point
+        self.tsf_start = RigidBody(p_x=self.graph.points[self.end_id].x,p_y=self.graph.points[self.end_id].y).transform(self.graph.road_basic[self.start_id,self.end_id])
+        # 线性变换到当前路的end_point
+        self.tsf_end = RigidBody(p_x=self.graph.points[self.end_id].x,p_y=self.graph.points[self.end_id].y).transform(self.graph.road_basic[self.start_id,self.end_id])
+
+        # 起始点，加上起始路口半径，即为道路的x0
+        self.start_x = self.tsf_start.p_x + self.graph.corssing_radius[self.start_id]
+        # 起始点，减去lane*3，即为道路的y0
+        self.start_y = self.tsf_start.p_y - ROAD_WIDTH/2
+
+
+        # endpoint线性变换到当前道路轴后的x减去路口半径
+        self.stop_line = RigidBody(p_x=self.graph.points[self.end_id].x,p_y=self.graph.points[self.end_id].y).transform(self.graph.road_basic[self.start_id,self.end_id]).p_x-self.graph.corssing_radius[self.end_id]
+
 
         self.to_lane = td.AlignLane(ay=0.6,by=4)
 
@@ -144,8 +162,10 @@ class CAVRoad(Road):
         Delegation.append(self,car)
 
     def simulate(self,dt:float=0.1):
-        # for car in self.cars:
-        #     car.vector_basis = (np.array([[0.5,-0.5],[0.5,0.5]]))
+        for car in self.cars:
+            car.vector_basis = (self.graph.road_basic[self.start_id,self.end_id])
+            car.p_x = car.p_x - self.start_x
+            car.p_y = car.p_y - self.start_y
 
         # 添加变道车辆到所有lane托管
         for car in self.inchange:
@@ -186,6 +206,17 @@ class CAVRoad(Road):
                 self.inchange.remove(car)
 
 
+
+
+
+
+
+        for car in self.cars:
+            car.p_x = car.p_x + self.start_x
+            car.p_y = car.p_y + self.start_y
+            car.vector_basis = (np.array([[1,0],[0,1]]))
+
+
         # 超过停止线，从此托管中移除，并返回父托管
         res = []
         for car in self.cars:
@@ -195,11 +226,5 @@ class CAVRoad(Road):
                 self.inchange.remove(car)
                 for column in self.cavs:
                     column.cars.remove(car)
+
         return res
-
-
-
-
-
-        # for car in self.cars:
-        #     car.vector_basis = (np.array([[1,0],[0,1]]))

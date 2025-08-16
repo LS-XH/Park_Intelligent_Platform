@@ -216,6 +216,8 @@ class RigidBody:
 
         self.__vector_basis = obj_ref
 
+        return self
+
 
     def simulate(self, dt: float = 0):
         self.v_x+= self.a_x * dt
