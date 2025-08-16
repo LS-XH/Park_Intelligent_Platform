@@ -482,8 +482,6 @@ class Graph(GraphBase):
         self.__road_basic = np.zeros((len(self.points), len(self.points), 2, 2), dtype=float)
         for cross_id, cross_point in enumerate(self.points):
             # 遍历cross列，即为到达这个路口的点
-            if cross_id == 30:
-                a = 1
             for from_point in [self.points[point_id] for point_id, degree in enumerate(self.degree[:, cross_id]) if degree != 0]:
                 # from法向量
                 vector_from = (cross_point.position - from_point.position)/self.length[self.point_name2id[from_point.name],cross_id]
@@ -491,30 +489,30 @@ class Graph(GraphBase):
                 vertical_from = np.array([vector_from[1], -vector_from[0]])
                 vertical_from *= np.cross(vector_from, vertical_from)   # 用于更为逆时针
 
-                # 遍历cross行，即为到从这个路口出发的点，用from，to两向量正角度来按照角度排序（to的逆时针排序，即车道从lane0到lane2，先右转再左转）
-                for lane,to_point in enumerate(sorted([self.points[point_id] for point_id, degree in enumerate(self.degree[cross_id, :]) if degree != 0 and point_id != self.point_name2id[from_point.name]],key = lambda to_point:np.cross(cross_point.position-from_point.position,to_point.position-cross_point.position).item())):
+                # 遍历cross行，即为到从这个路口出发的点，用from，to两向量正角度来按照角度排序（to的逆时针排序，即车道从lane0到lane2，先右转再左转）（掉头为lane3，默认直接转换为lane2）
+                for lane,to_point in enumerate(sorted([self.points[point_id] for point_id, degree in enumerate(self.degree[cross_id, :]) if degree != 0],key = lambda to_point:np.cross(cross_point.position-from_point.position,to_point.position-cross_point.position).item())):
                     # to法向量
                     vector_to = (to_point.position - cross_point.position)/self.length[cross_id,self.point_name2id[to_point.name]]
                     # 垂直逆时针法向量
                     vertical_to = np.array([vector_to[1], -vector_to[0]])/np.linalg.norm(vector_to)
                     vertical_to *= np.cross(vector_to, vertical_to)  # 用于更为逆时针
 
+                    # 在路口上的入节点和出节点（即在路口拐弯的from和to点）
                     point_s = cross_point.position - self.corssing_radius[cross_id] * vector_from + (lane+0.5) * ROAD_WIDTH * vertical_from
                     point_e = cross_point.position + self.corssing_radius[cross_id] * vector_to + (lane+0.5) * ROAD_WIDTH * vertical_to
 
-                    # centre = np.linalg.solve(np.vstack((vector_from, vector_to)),np.array([np.dot(vector_from, point_s), np.dot(vector_to, point_e)]))
-                    try:
+                    if np.cross(vector_from,vector_to) == 0:
+                        centre = (point_s+point_e)/2
+                    else:
                         centre = np.linalg.solve(np.vstack((vector_from, vector_to)),np.array([np.dot(vector_from, point_s), np.dot(vector_to, point_e)]))
-                    except np.linalg.LinAlgError:
-                        centre = None
-                    if self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] is not None:
-                        a = 1
+
 
                     radius = np.linalg.norm(centre-point_s)
                     self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] = {
                         "centre": centre if centre is not None else None,
                         "from":(-vertical_from)*radius,
-                        "to":(-vertical_to)*radius
+                        "to":(-vertical_to)*radius,
+                        "lane":lane
                     }
                     self.__road_basic[self.point_name2id[from_point.name],cross_id]=np.array([[vector_from[0],vertical_from[0]],
                                                                                       [vector_from[1],vertical_from[1]]])

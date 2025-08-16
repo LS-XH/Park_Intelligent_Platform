@@ -1,5 +1,6 @@
 from typing import Optional
 
+from numpy.ma.core import shape
 from sympy.physics.units.definitions import curie
 from typing_extensions import Optional
 import numpy as np
@@ -85,8 +86,8 @@ class Cars(Delegation,CarsBase):
         # 通过路径，将闲置的车辆添加到对应道路的委托
         for car in self.cars:
             path = self.path[self.all_cars.index(car)]
+            car.obj_lane=self.graph.crossing_turn[path[1],path[0],path[2]]["lane"]
             self.transfer(car,self.road_delegation[path[0],path[1]])
-
 
         # 执行road托管
         for s_id,row in enumerate(self.road_delegation):
@@ -104,11 +105,10 @@ class Cars(Delegation,CarsBase):
                     back_car.cross_id = self.path[car_id][1]
                     back_car.to_id = self.path[car_id][2]
 
-                    self.crossing_delegation[self.path[car_id][1]].recieve(back_car)
+                    self.transfer(self.crossing_delegation[self.path[car_id][1]],back_car)
 
                     # 已从end中出来，所以删除start，end将成为下次的start（删除走完的路径部分）
                     del self.path[car_id][0]
-
 
 
 
@@ -147,13 +147,12 @@ class Cars(Delegation,CarsBase):
         point.transform(self.graph.road_basic[s_id,e_id])
         point.p_x += self.graph.length[s_id,e_id] * process
         point.p_y += (lane+0.5) * LANE_WIDTH
-        self.add_car(car = Car(x=point.p_x,y=point.p_y),destination=destination,road=[s_id,e_id])
+        self.add_car(car = Car(x=point.p_x,y=point.p_y,base=point.vector_basis),destination=destination,road=[s_id,e_id])
 
     @property
     def car_positions(self):
         res = []
         for car in self.all_cars:
-            car.transform()
             res.append({
                 "x":car.p_x,
                 "y":car.p_y,
@@ -161,6 +160,22 @@ class Cars(Delegation,CarsBase):
             })
 
         return res
+
+    @property
+    def flow_statistics(self):
+        """
+        获取当前tick的点的车辆数量邻接矩阵
+        :return:
+        """
+        res = np.zeros(shape=(len(self.road_delegation),len(self.road_delegation)),dtype=int)
+
+        for row,del_r in enumerate(self.road_delegation):
+            for col,item in enumerate(del_r):
+                res[row,col] = len(item.all_cars)
+
+
+        return res
+
 
 
 
