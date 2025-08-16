@@ -1,9 +1,10 @@
 import heapq    # 导入优先模块，用于高效获取距离最小的节点，构建小顶堆
 # heappush(heap, item): 将元素item添加到heap中，并保持堆的顺序。
 # heappop(heap): 弹出并返回堆中的最小元素。
-
+import numpy as np
 import random
-import time
+from Code.AIPart.graph.graph import Graph
+
 
 """
 
@@ -12,14 +13,35 @@ start 起点
 end 终点
 """
 
-def bidirectional_dijkstra(adj, start, end):
+def normalize_min_max(matrix):
+    """
+    归一化
+    """
+    min_val = matrix.min()
+    max_val = matrix.max()
+    if max_val - min_val < 1e-9:  # 避免除以0（矩阵所有元素相同）
+        return np.zeros_like(matrix)
+    return (matrix - min_val) / (max_val - min_val)
+
+def bidirectional_dijkstra(car_matrix: ndarray ,start: int, end: int, graph: Graph):
     """
     最短路径算法
     :param adj:长度矩阵
     :param start: 起点id
     :param end: 终点id
+    :param weight_matrix: 权重矩阵
     :return: path 最短路径列表
     """
+    length_adj = graph.length  # 假设Graph类用adj_matrix存储邻接矩阵
+    length_adj = normalize_min_max(length_adj)
+    road_density = graph.get_road_density_matrix()
+    road_density = normalize_min_max(road_density)
+    road_density *= 0.3
+    car_matrix = normalize_min_max(car_matrix)
+    car_matrix *= 0.7
+    adj = np.add(road_density, np.add(length_adj, car_matrix))
+
+
 
     # 创建正向距离字典：起点到每个结点的初始距离设为无穷大
     forward_dist = {node: float('inf') for node in range(len(adj))}

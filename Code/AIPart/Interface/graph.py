@@ -80,6 +80,7 @@ class Edge:
         self.__end_id = end_id
         self.__degree = degree
         self.__limit_speed = limit_speed
+        self.__car_num = car_num
 
     @property
     def start_id(self) -> int:
@@ -109,6 +110,14 @@ class Edge:
         :return:
         """
         return self.__degree
+
+    @property
+    def car_num(self) -> list:
+        """
+        边上车的数量
+        :return:
+        """
+        return self.__car_num
 
 
 

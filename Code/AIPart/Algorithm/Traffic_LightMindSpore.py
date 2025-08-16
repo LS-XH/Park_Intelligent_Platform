@@ -383,7 +383,7 @@ def train_agent(episodes=20000, batch_size=128):
 
         if total_reward > best_reward:
             best_reward = total_reward
-            ms.save_checkpoint(agent.model, "Traffic_Light11.ckpt")
+            ms.save_checkpoint(agent.model, "Traffic_Light12.ckpt")
 
     print(f"最佳奖励: {best_reward:.2f}, 最终平均: {np.mean(rewards_history[-100:]):.2f}")
     return agent
@@ -421,7 +421,7 @@ def Traffic_Control(car_flow, queue_length, people_flow, weather, traffic_status
     env = TrafficLightEnv()
     try:
         model = DQN(8, ACTION_SIZE)
-        ms.load_checkpoint("Traffic_Light11.ckpt", model)
+        ms.load_checkpoint("Traffic_Light12.ckpt", model)
         model.set_train(False)
     except:
         print("使用默认策略")
@@ -449,8 +449,8 @@ def Traffic_Control(car_flow, queue_length, people_flow, weather, traffic_status
 
 
 if __name__ == "__main__":
-    agent = train_agent(episodes=2000, batch_size=128)
-    agent = validate_agent(agent)
+    # agent = train_agent(episodes=40000, batch_size=128)
+    # agent = validate_agent(agent)
 
     print("=== 场景1：高峰期拥堵（晴天） ===")
     result = Traffic_Control(

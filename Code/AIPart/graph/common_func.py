@@ -36,8 +36,8 @@ def get_random_end_points(start_point, edges):
     根据起始点和所有路线，随机选择一个终点
 
     :param start_point:      起点
-    :param edges:               所有路线
-    :return:                    终点ID
+    :param edges:            所有路线
+    :return:                 终点ID
     """
 
     end_points = [] # 初始化一个空列表，用于存储所有可能的终点
@@ -64,7 +64,7 @@ def generate_cars_list(num_cars):
     points = graph['points']
     edges = graph['edges']
 
-    laplace_scale = 3
+    laplace_scale =0.05
 
     cars = {}
     for i in range(num_cars):
