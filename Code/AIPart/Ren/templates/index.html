@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"> <!-- 添加字符编码声明，解决中文乱码 -->
+    <title>智能体导航可视化</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .status {
+            color: #666;
+            margin: 10px 0;
+        }
+        #visualization {
+            max-width: 100%;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .error {
+            color: #dc3545;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>智能体导航实时可视化</h1>
+    <div class="status" id="connectionStatus">正在连接到服务器...</div>
+    <div class="error" id="errorMessage"></div>
+    <img id="visualization" src="" alt="实时可视化图像" style="display: none;">
+
+    <script>
+        // 连接后端WebSocket
+        const socket = io('http://localhost:5000');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const errorMessage = document.getElementById('errorMessage');
+        const visualization = document.getElementById('visualization');
+
+        // 连接成功
+        socket.on('connect', function() {
+            connectionStatus.textContent = '已连接到服务器';
+            connectionStatus.style.color = '#28a745';
+            errorMessage.textContent = '';
+        });
+
+        // 连接失败
+        socket.on('connect_error', function(error) {
+            connectionStatus.textContent = '连接失败';
+            connectionStatus.style.color = '#dc3545';
+            errorMessage.textContent = '无法连接到服务器，请检查后端是否已启动';
+            console.error('连接错误:', error);
+        });
+
+        // 断开连接
+        socket.on('disconnect', function() {
+            connectionStatus.textContent = '已断开连接';
+            connectionStatus.style.color = '#ffc107';
+        });
+
+        // 接收图像并更新显示
+        socket.on('frame_update', function(data) {
+            try {
+                if (data && data.image) {
+                    visualization.src = 'data:image/png;base64,' + data.image;
+                    visualization.style.display = 'block';
+                    errorMessage.textContent = '';
+                } else {
+                    throw new Error('接收到的数据格式不正确');
+                }
+            } catch (err) {
+                errorMessage.textContent = '图像加载失败: ' + err.message;
+                console.error('图像处理错误:', err);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -44,7 +44,7 @@ for edge in edges:
     obstacles_params.append({
         "start_point": start_point,
         "end_point": end_point,
-        "width": 12,
+        "width": 18,
         "gap_offset_ratio": 1.0
     })
 
@@ -246,3 +246,4 @@ targets_info = [
 ]
 
 # print(f"已生成固定目标点：共{len(points_coords)}个节点，生成了{len(targets)}个目标点")
+EXIT_NODE = [1, 27]

@@ -2,18 +2,16 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch_geometric.nn import GCNConv, global_mean_pool
-from torch_geometric.data import Data
+from torch_geometric.data import Data, Batch
 import numpy as np
 import os
 import time
 from collections import deque
 
-from config import device
-
-WEIGHTS_PATH = "agent_model.pth"
+from Ren.config import device, WEIGHTS_PATH, TRAIN_STEP
 
 
-# 辅助函数：将输入转换为CUDA张量
+# 辅助函数：将输入转换为CUDA张量（一次转换，多次使用）
 def to_cuda_tensor(x):
     """
     自动将列表、numpy数组转换为CUDA张量
@@ -63,7 +61,7 @@ class LSTMModule(nn.Module):
 
 
 class ActorCritic(nn.Module):
-    """策略网络和价值网络"""
+    """策略网络和价值网络（支持批量输入）"""
 
     def __init__(self, gnn_input_dim, lstm_input_dim, hidden_dim, action_dim=2):
         super(ActorCritic, self).__init__()
@@ -86,10 +84,10 @@ class ActorCritic(nn.Module):
         )
 
     def forward(self, gnn_data, lstm_seq):
-        # 处理图数据
+        # 处理图数据（批量）
         gnn_out = self.gnn(gnn_data.x, gnn_data.edge_index, gnn_data.batch)
 
-        # 处理时序数据
+        # 处理时序数据（批量）
         lstm_out = self.lstm(lstm_seq)
 
         # 融合特征
@@ -103,15 +101,31 @@ class ActorCritic(nn.Module):
 
 
 class AgentEnv:
-    """智能体环境，用于模拟和交互（全程使用CUDA张量）"""
+    """智能体环境，优化后支持批量运算"""
 
-    def __init__(self, obs, points_coords, agents_pos, targets_coords):
-        self.obs = obs  # 保持原始障碍物结构（Obstacle类实例列表）
-        # 强制转换为CUDA张量
+    def __init__(self, obs, points_coords, agents_pos, targets_coords, max_obstacles=30):
+        self.obs = obs  # 原始障碍物结构
+        self.max_obstacles = max_obstacles  # 限制每个智能体最多考虑的障碍物数量
+
+        # 一次性转换所有静态数据为CUDA张量（避免重复转换）
         self.points_coords = to_cuda_tensor(points_coords)
         self.agents_pos = to_cuda_tensor(agents_pos)
         self.targets_coords = to_cuda_tensor(targets_coords)
         self.num_agents = self.agents_pos.size(0)
+
+        # 预处理障碍物：转换为张量并计算中心点（用于距离排序）
+        self.obstacle_segments = []  # 存储所有障碍物线段 (start, end)
+        self.obstacle_centers = []  # 存储所有障碍物中心点（用于快速距离计算）
+        for ob in self.obs:
+            start = torch.tensor(ob.start_point, device=device, dtype=torch.float32)
+            end = torch.tensor(ob.end_point, device=device, dtype=torch.float32)
+            self.obstacle_segments.append((start, end))
+            self.obstacle_centers.append((start + end) / 2.0)  # 中心点
+
+        # 转换为批量张量（形状：[num_obstacles, 2]）
+        self.obstacle_centers = torch.stack(self.obstacle_centers) if self.obstacle_centers else None
+        self.obstacle_segments = torch.stack(
+            [torch.stack(s) for s in self.obstacle_segments]) if self.obstacle_segments else None
 
         # 初始化历史位置（使用CUDA张量队列）
         self.agent_history = [deque(maxlen=5) for _ in range(self.num_agents)]
@@ -128,7 +142,7 @@ class AgentEnv:
         return self.get_states()
 
     def get_states(self):
-        """获取所有智能体的当前状态（返回CUDA张量）"""
+        """批量获取所有智能体的状态（返回列表）"""
         states = []
         for i in range(self.num_agents):
             states.append({
@@ -138,118 +152,146 @@ class AgentEnv:
         return states
 
     def get_gnn_data(self, agent_idx):
-        """构建GNN输入数据（全程使用CUDA张量）"""
-        agent_pos = self.agents_pos[agent_idx]  # 已为CUDA张量
-        target_pos = self.targets_coords[agent_idx]  # 已为CUDA张量
+        """构建GNN输入数据（只保留最近的N个障碍物）"""
+        agent_pos = self.agents_pos[agent_idx]  # 形状: [2]
+        target_pos = self.targets_coords[agent_idx]  # 形状: [2]
 
-        # 节点特征: 智能体(0)、目标(1)、障碍物点(2)
-        nodes = [torch.cat([agent_pos, torch.tensor([0.0], device=device)])]  # 智能体节点
-        nodes.append(torch.cat([target_pos, torch.tensor([1.0], device=device)]))  # 目标节点
+        # 节点特征: 智能体(0)、目标(1)
+        nodes = [
+            torch.cat([agent_pos, torch.tensor([0.0], device=device)]),  # 智能体节点
+            torch.cat([target_pos, torch.tensor([1.0], device=device)])  # 目标节点
+        ]
 
-        # 添加障碍物点
-        for ob in self.obs:
-            start_point = torch.tensor(ob.start_point, device=device, dtype=torch.float32)
-            end_point = torch.tensor(ob.end_point, device=device, dtype=torch.float32)
+        # 只添加最近的N个障碍物（优化点1：限制障碍物数量）
+        if self.obstacle_centers is not None and len(self.obstacle_centers) > 0:
+            # 计算智能体到所有障碍物中心点的距离（批量运算）
+            distances = torch.norm(self.obstacle_centers - agent_pos, dim=1)  # 形状: [num_obstacles]
 
-            nodes.append(torch.cat([start_point, torch.tensor([2.0], device=device)]))
-            nodes.append(torch.cat([end_point, torch.tensor([2.0], device=device)]))
+            # 筛选最近的max_obstacles个障碍物
+            _, top_k_indices = torch.topk(distances, k=min(self.max_obstacles, len(distances)), largest=False)
+
+            # 添加选中的障碍物节点
+            for idx in top_k_indices:
+                start, end = self.obstacle_segments[idx]
+                nodes.append(torch.cat([start, torch.tensor([2.0], device=device)]))
+                nodes.append(torch.cat([end, torch.tensor([2.0], device=device)]))
 
         # 转换为PyTorch Geometric格式
-        x = torch.stack(nodes).to(device)  # 堆叠为CUDA张量
+        x = torch.stack(nodes).to(device)  # 节点特征
         edges = []
         for i in range(1, len(nodes)):
             edges.append([0, i])  # 智能体到其他节点
             edges.append([i, 0])  # 其他节点到智能体
 
         edge_index = torch.tensor(edges, dtype=torch.long, device=device).t().contiguous()
-        batch = torch.zeros(x.size(0), dtype=torch.long, device=device)  # 单个图
+        batch = torch.zeros(x.size(0), dtype=torch.long, device=device)  # 单个图的batch标记
 
         return Data(x=x, edge_index=edge_index, batch=batch)
 
     def get_lstm_sequence(self, agent_idx):
-        """获取LSTM输入序列（返回CUDA张量）"""
+        """获取LSTM输入序列（批量兼容）"""
         history = list(self.agent_history[agent_idx])
         # 确保序列长度固定
         while len(history) < 5:
-            history.insert(0, history[0].clone())  # 填充初始位置（使用张量克隆）
+            history.insert(0, history[0].clone())  # 填充初始位置
 
-        # 直接堆叠为CUDA张量并添加batch维度
+        # 形状: [1, seq_len, input_dim]（兼容batch处理）
         return torch.stack(history).unsqueeze(0).to(device)
 
     def step(self, actions):
-        """执行动作并返回奖励（全程使用CUDA张量）"""
-        rewards = []
-        old_positions = self.agents_pos.clone()  # 张量克隆
+        """执行动作并返回奖励（批量运算优化）"""
+        # 动作张量形状: [num_agents, 2]（确保无冗余维度）
+        actions_tensor = torch.stack(actions).to(device)
 
-        # 更新所有智能体的位置（张量运算）
-        actions_tensor = torch.stack(actions).to(device)  # 动作转为CUDA张量
+        # 批量更新位置（优化点3：替代循环）
+        old_positions = self.agents_pos.clone()
         self.agents_pos += actions_tensor
+
+        # 批量更新历史位置
         for i in range(self.num_agents):
             self.agent_history[i].append(self.agents_pos[i].clone())
 
-        # 计算每个智能体的奖励（使用张量运算）
-        for i in range(self.num_agents):
-            old_pos = old_positions[i]
-            new_pos = self.agents_pos[i]
-            target_pos = self.targets_coords[i]
-
-            # 靠近目标的奖励（张量计算距离）
-            distance_old = torch.norm(old_pos - target_pos)
-            distance_new = torch.norm(new_pos - target_pos)
-            reward = 2.0 * (distance_old - distance_new)  # 权重提高
-
-            # 远离障碍物的奖励
-            min_obs_dist = self._get_min_obstacle_distance(i)
-            if min_obs_dist < 0.3:  # 过近惩罚
-                reward -= 1.0
-            elif min_obs_dist < 0.8:  # 较近警告
-                reward -= 0.3
-
-            # 动作平滑性奖励
-            if len(self.agent_history[i]) > 2:
-                prev_dir = self.agent_history[i][-2] - self.agent_history[i][-3]
-                curr_dir = actions[i]
-                if torch.norm(prev_dir) > 1e-6 and torch.norm(curr_dir) > 1e-6:
-                    cos_sim = torch.dot(prev_dir, curr_dir) / (torch.norm(prev_dir) * torch.norm(curr_dir))
-                    reward += 0.5 * (cos_sim + 1)  # 方向相似性奖励
-
-            rewards.append(reward.item())  # 转为标量存储
+        # 批量计算奖励（优化点3：替代循环）
+        rewards = self._calculate_batch_rewards(old_positions, actions_tensor)
 
         return rewards, self.get_states()
 
-    def _get_min_obstacle_distance(self, agent_idx):
-        """计算智能体到最近障碍物的距离（张量版本）"""
-        agent_pos = self.agents_pos[agent_idx]
-        min_dist = torch.tensor(float('inf'), device=device)
+    def _calculate_batch_rewards(self, old_positions, actions_tensor):
+        """批量计算所有智能体的奖励（替代循环）"""
+        num_agents = self.num_agents
 
-        # 检查所有障碍物线段
-        for ob in self.obs:
-            start = torch.tensor(ob.start_point, device=device, dtype=torch.float32)
-            end = torch.tensor(ob.end_point, device=device, dtype=torch.float32)
+        # 1. 靠近目标的奖励（批量计算）
+        distance_old = torch.norm(old_positions - self.targets_coords, dim=1)  # [num_agents]
+        distance_new = torch.norm(self.agents_pos - self.targets_coords, dim=1)  # [num_agents]
+        rewards = 2.0 * (distance_old - distance_new)  # 基础奖励
 
-            # 计算点到线段的距离（张量运算）
-            dist = self._point_to_segment_distance(agent_pos, start, end)
-            min_dist = torch.min(min_dist, dist)
+        # 2. 障碍物距离惩罚（批量计算）
+        if self.obstacle_segments is not None and len(self.obstacle_segments) > 0:
+            min_obs_distances = self._batch_get_min_obstacle_distance()  # [num_agents]
+            rewards = torch.where(
+                min_obs_distances < 0.3,  # 过近惩罚
+                rewards - 1.0,
+                torch.where(
+                    min_obs_distances < 0.8,  # 较近警告
+                    rewards - 0.3,
+                    rewards  # 安全距离无惩罚
+                )
+            )
 
-        return min_dist if min_dist != float('inf') else torch.tensor(2.0, device=device)
+        # 3. 动作平滑性奖励（批量计算）
+        if len(self.agent_history[0]) > 2:  # 确保有足够历史
+            # 提取前一步和当前步的方向向量
+            prev_dirs = torch.stack([self.agent_history[i][-2] - self.agent_history[i][-3]
+                                     for i in range(num_agents)])  # [num_agents, 2]
+            curr_dirs = actions_tensor  # [num_agents, 2]
 
-    @staticmethod
-    def _point_to_segment_distance(point, start, end):
-        """计算点到线段的最短距离（张量版本）"""
-        seg_vec = end - start
-        point_vec = point - start
-        seg_len_sq = torch.dot(seg_vec, seg_vec)
+            # 计算方向余弦相似度（批量）
+            dir_norms = torch.norm(prev_dirs, dim=1) * torch.norm(curr_dirs, dim=1)  # [num_agents]
+            valid_mask = dir_norms > 1e-6  # 排除零向量
+            cos_sim = torch.zeros(num_agents, device=device)
 
-        if seg_len_sq < 1e-6:  # 线段是一个点
-            return torch.norm(point_vec)
+            if valid_mask.any():
+                dot_products = torch.sum(prev_dirs * curr_dirs, dim=1)  # [num_agents]
+                cos_sim[valid_mask] = dot_products[valid_mask] / dir_norms[valid_mask]
 
-        t = torch.clamp(torch.dot(point_vec, seg_vec) / seg_len_sq, 0.0, 1.0)
-        projection = start + t * seg_vec
-        return torch.norm(point - projection)
+            rewards += 0.5 * (cos_sim + 1)  # 平滑奖励
+
+        return rewards.cpu().numpy().tolist()  # 转为CPU列表返回
+
+    def _batch_get_min_obstacle_distance(self):
+        """批量计算所有智能体到最近障碍物的距离（优化点3：替代循环）"""
+        num_agents = self.agents_pos.size(0)
+        num_obstacles = self.obstacle_segments.size(0) if self.obstacle_segments is not None else 0
+        min_distances = torch.full((num_agents,), float('inf'), device=device)
+
+        if num_obstacles == 0:
+            return min_distances.fill_(2.0)
+
+        # 批量计算每个智能体到所有障碍物的距离
+        agents_pos = self.agents_pos.unsqueeze(1)  # [num_agents, 1, 2]
+        start_points = self.obstacle_segments[:, 0].unsqueeze(0)  # [1, num_obstacles, 2]
+        end_points = self.obstacle_segments[:, 1].unsqueeze(0)  # [1, num_obstacles, 2]
+
+        # 计算点到线段的距离（批量向量运算）
+        seg_vec = end_points - start_points  # [1, num_obstacles, 2]
+        point_vec = agents_pos - start_points  # [num_agents, num_obstacles, 2]
+        seg_len_sq = torch.sum(seg_vec ** 2, dim=2)  # [1, num_obstacles]
+        seg_len_sq = torch.clamp(seg_len_sq, min=1e-6)  # 避免除以零
+
+        t = torch.sum(point_vec * seg_vec, dim=2) / seg_len_sq  # [num_agents, num_obstacles]
+        t = torch.clamp(t, 0.0, 1.0)  # [num_agents, num_obstacles]
+
+        projection = start_points + t.unsqueeze(2) * seg_vec  # [num_agents, num_obstacles, 2]
+        distances = torch.norm(agents_pos - projection, dim=2)  # [num_agents, num_obstacles]
+
+        # 取每个智能体的最小距离
+        min_distances = torch.min(distances, dim=1).values
+
+        return torch.where(min_distances == float('inf'), torch.tensor(2.0, device=device), min_distances)
 
 
 class PPO:
-    """近端策略优化算法（全程使用CUDA张量）"""
+    """近端策略优化算法（批量运算优化）"""
 
     def __init__(self, gnn_input_dim, lstm_input_dim, hidden_dim, lr=3e-4, gamma=0.99, eps_clip=0.2):
         self.gamma = gamma
@@ -286,16 +328,19 @@ class PPO:
             return False
 
     def select_action(self, states):
-        """选择动作（批量处理多个智能体）"""
-        actions = []
+        """选择动作（批量处理，去除冗余维度）"""
         with torch.no_grad():
-            for state in states:
-                action, _ = self.policy_old(state["gnn_data"], state["lstm_seq"])
-                actions.append(action)  # 保持CUDA张量
-        return actions
+            # 批量处理GNN数据
+            batch_gnn = Batch.from_data_list([s["gnn_data"] for s in states])
+            # 批量处理LSTM序列（形状: [num_agents, seq_len, input_dim]）
+            batch_lstm = torch.cat([s["lstm_seq"] for s in states], dim=0)
+
+            # 一次前向传播计算所有动作（优化点3：替代循环）
+            actions, _ = self.policy_old(batch_gnn, batch_lstm)
+            return [action.squeeze() for action in actions.split(1)]  # 确保形状正确
 
     def update(self, memory):
-        """更新策略网络（全程使用CUDA张量）"""
+        """更新策略网络（批量运算优化）"""
         # 计算累积奖励
         rewards = []
         discounted_reward = 0
@@ -305,43 +350,34 @@ class PPO:
             discounted_reward = reward + (self.gamma * discounted_reward)
             rewards.insert(0, discounted_reward)
 
-        # 标准化奖励（转为CUDA张量）
+        # 标准化奖励（CUDA张量）
         rewards = torch.tensor(rewards, dtype=torch.float32, device=device)
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-5)
 
-        # 提取记忆中的数据
-        old_states_gnn, old_states_lstm, old_actions, old_logprobs = [], [], [], []
-        for m in memory:
-            old_states_gnn.append(m[0])
-            old_states_lstm.append(m[1])
-            old_actions.append(m[2])
-            old_logprobs.append(m[3])
+        # 提取记忆中的批量数据
+        old_gnn_data = [m[0] for m in memory]
+        old_lstm_seq = [m[1] for m in memory]
+        old_actions = torch.stack([m[2] for m in memory]).to(device)
+        old_logprobs = torch.tensor([m[3] for m in memory], device=device)
 
         # 多次迭代更新
         for _ in range(5):
-            # 计算当前策略的动作和价值
-            logprobs = []
-            state_values = []
+            # 批量处理状态数据
+            batch_gnn = Batch.from_data_list(old_gnn_data)
+            batch_lstm = torch.cat(old_lstm_seq, dim=0)
 
-            for i in range(len(old_states_gnn)):
-                action, state_val = self.policy(old_states_gnn[i], old_states_lstm[i])
-                state_values.append(state_val)
+            # 一次前向传播计算所有动作和价值（优化点3：替代循环）
+            actions, state_values = self.policy(batch_gnn, batch_lstm)
+            state_values = state_values.squeeze()
 
-                # 计算动作概率的对数（使用CUDA张量运算）
-                old_action_tensor = old_actions[i].to(device)
-                logprob = -torch.sum(torch.square(action - old_action_tensor))
-                logprobs.append(logprob)
-
-            logprobs = torch.stack(logprobs).to(device)
-            state_values = torch.stack(state_values).squeeze().to(device)
+            # 批量计算动作概率的对数
+            logprobs = -torch.sum(torch.square(actions - old_actions), dim=1)
 
             # 计算优势
             advantages = rewards - state_values.detach()
 
-            # 计算比率
-            ratios = torch.exp(logprobs - torch.tensor(old_logprobs, device=device))
-
-            # 计算PPO损失
+            # 计算比率和PPO损失
+            ratios = torch.exp(logprobs - old_logprobs)
             surr1 = ratios * advantages
             surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
             loss = -torch.min(surr1, surr2) + 0.5 * self.MseLoss(state_values, rewards)
@@ -355,9 +391,10 @@ class PPO:
         self.policy_old.load_state_dict(self.policy.state_dict())
 
 
-def initialize_agent(obs, points_coords, agents_pos, targets_coords, train_first=True, train_steps=100):
+def initialize_agent(obs, points_coords, agents_pos, targets_coords, train_first=True, train_steps=TRAIN_STEP,
+                     max_obstacles=10):
     """初始化智能体模型（包含训练或加载权重）"""
-    # 转换输入为CUDA张量
+    # 转换输入为CUDA张量（一次转换）
     points_coords = to_cuda_tensor(points_coords)
     agents_pos = to_cuda_tensor(agents_pos)
     targets_coords = to_cuda_tensor(targets_coords)
@@ -370,8 +407,8 @@ def initialize_agent(obs, points_coords, agents_pos, targets_coords, train_first
 
     # 如果需要先训练
     if train_first:
-        # 初始化环境
-        env = AgentEnv(obs, points_coords, agents_pos, targets_coords)
+        # 初始化环境（带障碍物数量限制）
+        env = AgentEnv(obs, points_coords, agents_pos, targets_coords, max_obstacles=max_obstacles)
         num_agents = env.num_agents
 
         print(f"开始训练，共{train_steps}步，设备: {device}")
@@ -382,13 +419,13 @@ def initialize_agent(obs, points_coords, agents_pos, targets_coords, train_first
             states = env.get_states()
             memory = []
 
-            # 收集经验
+            # 收集经验（批量动作生成）
             actions = ppo.select_action(states)
             rewards, next_states = env.step(actions)
 
             # 存储经验到记忆
             for i in range(num_agents):
-                # 计算动作概率的对数
+                # 计算动作概率的对数（批量计算的一部分）
                 with torch.no_grad():
                     policy_action, _ = ppo.policy(states[i]["gnn_data"], states[i]["lstm_seq"])
                     logprob = -torch.sum(torch.square(actions[i] - policy_action)).item()
@@ -409,10 +446,10 @@ def initialize_agent(obs, points_coords, agents_pos, targets_coords, train_first
             total_rewards.append(np.mean(rewards))
 
             # 打印训练进度
-            if (step + 1) % 50 == 0:
-                avg_reward = np.mean(total_rewards[-50:])
-                elapsed = time.time() - start_time
-                print(f"步骤: {step + 1}/{train_steps}, 平均奖励: {avg_reward:.4f}, 耗时: {elapsed:.2f}s")
+            # if (step + 1) % 10 == 0:  # 更频繁地打印进度，确认是否卡住
+            avg_reward = np.mean(total_rewards[-10:])
+            elapsed = time.time() - start_time
+            print(f"步骤: {step + 1}/{train_steps}, 平均奖励: {avg_reward:.4f}, 耗时: {elapsed:.2f}s")
 
         # 训练结束后保存权重
         ppo.save_weights()
@@ -426,18 +463,18 @@ def initialize_agent(obs, points_coords, agents_pos, targets_coords, train_first
     return ppo
 
 
-def get_correction_vectors(ppo, obs, points_coords, agents_pos, targets_coords):
-    """获取所有智能体的修正向量（需要已初始化的PPO模型）"""
+def get_correction_vectors(ppo, obs, points_coords, agents_pos, targets_coords, max_obstacles=10):
+    """获取所有智能体的修正向量（批量处理）"""
     # 转换输入为CUDA张量
     points_coords = to_cuda_tensor(points_coords)
     agents_pos = to_cuda_tensor(agents_pos)
     targets_coords = to_cuda_tensor(targets_coords)
 
     # 初始化环境并获取当前状态
-    env = AgentEnv(obs, points_coords, agents_pos, targets_coords)
+    env = AgentEnv(obs, points_coords, agents_pos, targets_coords, max_obstacles=max_obstacles)
     states = env.get_states()
 
-    # 生成修正向量
+    # 生成修正向量（批量处理）
     correction_vectors = ppo.select_action(states)
 
     return correction_vectors  # 返回CUDA张量列表
