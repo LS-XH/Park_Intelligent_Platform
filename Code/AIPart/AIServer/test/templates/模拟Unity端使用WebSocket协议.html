@@ -41,43 +41,27 @@
             .animate-pulse-slow {
                 animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
             }
-            .card-shadow {
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            }
-            .card-hover {
-                transition: all 0.3s ease;
-            }
-            .card-hover:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            }
         }
     </style>
 </head>
-<body class="bg-gray-50 font-inter text-dark min-h-screen flex flex-col">
-    <!-- 顶部导航栏 -->
-    <header class="bg-white shadow-sm sticky top-0 z-50 transition-all duration-300">
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
+<body class="bg-gray-50 text-dark min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
                 <i class="fa fa-gamepad text-primary text-2xl"></i>
-                <h1 class="text-xl font-bold text-gray-800">Unity应用测试工具</h1>
+                <h1 class="text-xl font-bold">Unity应用测试工具</h1>
             </div>
-            <div class="flex items-center space-x-4">
-                <div id="connection-status" class="flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm">
-                    <span class="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
-                    未连接
-                </div>
-                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                    <i class="fa fa-moon-o text-gray-600"></i>
-                </button>
-            </div>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                <i class="fa fa-moon-o text-gray-600"></i>
+            </button>
         </div>
     </header>
 
     <!-- 主内容区 -->
     <main class="flex-grow container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- 连接控制区域 -->
-        <div class="lg:col-span-3 bg-white rounded-xl p-5 card-shadow card-hover">
+        <div class="lg:col-span-3 bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow">
             <h2 class="text-lg font-semibold mb-4 flex items-center">
                 <i class="fa fa-plug text-primary mr-2"></i>服务器连接
             </h2>
@@ -93,10 +77,15 @@
                     </div>
                 </div>
                 <div class="flex items-end">
-                    <button id="simulation-control" class="w-full bg-secondary hover:bg-secondary/90 text-white px-6 py-2 rounded-lg transition-all flex items-center justify-center" disabled>
-                        <i class="fa fa-play mr-2"></i>启动模拟
-                    </button>
+                    <div id="connection-status" class="flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm">
+                        <span class="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>未连接
+                    </div>
                 </div>
+            </div>
+            <div class="mt-4">
+                <button id="simulation-control" class="w-full bg-secondary hover:bg-secondary/90 text-white px-6 py-2 rounded-lg transition-all flex items-center justify-center" disabled>
+                    <i class="fa fa-play mr-2"></i>启动模拟
+                </button>
             </div>
             <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
@@ -126,7 +115,7 @@
         <!-- 数据发送区域 -->
         <div class="lg:col-span-1 space-y-6">
             <!-- 发送节点数据 -->
-            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+            <div class="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow">
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
                     <i class="fa fa-map-marker text-primary mr-2"></i>发送节点数据
                 </h2>
@@ -146,14 +135,14 @@
                         <input type="number" id="node-y" step="0.01" value="200.3"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
                     </div>
-                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center">
+                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center" disabled>
                         <i class="fa fa-paper-plane mr-2"></i>发送节点
                     </button>
                 </form>
             </div>
 
             <!-- 发送路段数据 -->
-            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+            <div class="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow">
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
                     <i class="fa fa-road text-primary mr-2"></i>发送路段数据
                 </h2>
@@ -178,7 +167,7 @@
                         <input type="number" id="road-length" step="0.01" min="0.1" value="150.75"
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
                     </div>
-                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center">
+                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center" disabled>
                         <i class="fa fa-paper-plane mr-2"></i>发送路段
                     </button>
                 </form>
@@ -188,26 +177,48 @@
         <!-- 数据接收和日志区域 -->
         <div class="lg:col-span-2 space-y-6">
             <!-- 车辆数据展示 -->
-            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
-                <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <i class="fa fa-car text-primary mr-2"></i>车辆模拟数据
-                </h2>
-                <div class="h-64">
-                    <canvas id="vehicle-chart"></canvas>
+            <div class="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold flex items-center">
+                        <i class="fa fa-car text-primary mr-2"></i>车辆模拟数据
+                    </h2>
+                    <div class="mt-2 sm:mt-0 flex space-x-2">
+                        <button id="zoom-fit" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded transition-colors">
+                            <i class="fa fa-compress mr-1"></i>适应视图
+                        </button>
+                        <button id="zoom-in" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded transition-colors">
+                            <i class="fa fa-search-plus mr-1"></i>放大
+                        </button>
+                        <button id="zoom-out" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded transition-colors">
+                            <i class="fa fa-search-minus mr-1"></i>缩小
+                        </button>
+                        <button id="reload-map" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded transition-colors">
+                            <i class="fa fa-refresh mr-1"></i>重新加载地图
+                        </button>
+                    </div>
                 </div>
+
+                <!-- 图表容器 -->
+                <div class="overflow-auto bg-gray-50 p-2 rounded-lg border border-gray-200" style="max-height: 500px;">
+                    <div class="min-w-[600px] min-h-[500px]">
+                        <canvas id="vehicle-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 数据表格 -->
                 <div class="mt-4 overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead>
                             <tr>
-                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">X坐标</th>
-                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Y坐标</th>
-                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角度</th>
+                                <th class="w-1/4 px-6 py-4 bg-gray-50 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="w-1/4 px-6 py-4 bg-gray-50 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">X坐标</th>
+                                <th class="w-1/4 px-6 py-4 bg-gray-50 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Y坐标</th>
+                                <th class="w-1/4 px-6 py-4 bg-gray-50 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">角度</th>
                             </tr>
                         </thead>
                         <tbody id="vehicle-data" class="bg-white divide-y divide-gray-200">
                             <tr>
-                                <td colspan="4" class="px-4 py-8 text-center text-gray-500">等待接收车辆数据...</td>
+                                <td colspan="4" class="px-6 py-10 text-center text-gray-500">等待接收车辆数据...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -215,7 +226,7 @@
             </div>
 
             <!-- 通信日志 -->
-            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+            <div class="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow">
                 <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
                     <div class="flex items-center">
                         <i class="fa fa-history text-primary mr-2"></i>通信日志
@@ -249,6 +260,14 @@
         let messageStats = { sent: 0, received: 0 };
         let vehicleChart;
         let vehicleData = {};
+        let mapData = null;  // 存储地图数据
+        let currentZoom = 1;
+        let chartMinX = 0;   // X轴最小值
+        let chartMaxX = 0;   // X轴最大值
+        let chartMinY = 0;   // Y轴最小值
+        let chartMaxY = 0;   // Y轴最大值
+        const PADDING_RATIO = 0.1; // 地图边缘留白比例
+        let roadEdges = [];  // 存储道路边缘信息，用于精确绘制
 
         // DOM元素
         const connectBtn = document.getElementById('connect-btn');
@@ -264,55 +283,373 @@
         const clearLogBtn = document.getElementById('clear-log');
         const notification = document.getElementById('notification');
         const themeToggle = document.getElementById('theme-toggle');
+        const zoomInBtn = document.getElementById('zoom-in');
+        const zoomOutBtn = document.getElementById('zoom-out');
+        const zoomFitBtn = document.getElementById('zoom-fit');
+        const reloadMapBtn = document.getElementById('reload-map');
 
-        // 初始化图表
+        // 初始化图表 - 包含地图绘制功能
         function initChart() {
             const ctx = document.getElementById('vehicle-chart').getContext('2d');
             vehicleChart = new Chart(ctx, {
                 type: 'scatter',
                 data: {
-                    datasets: [{
-                        label: '车辆位置',
-                        data: [],
-                        backgroundColor: '#165DFF',
-                        pointRadius: 6,
-                        pointHoverRadius: 8
-                    }]
+                    datasets: [
+                        // 节点数据集
+                        {
+                            label: '节点',
+                            data: [],
+                            backgroundColor: '#6B7280',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            order: 1
+                        },
+                        // 车辆数据集 - 放在最上层
+                        {
+                            label: '车辆位置',
+                            data: [],
+                            backgroundColor: '#165DFF',
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            pointHoverBorderWidth: 2,
+                            pointHoverBorderColor: '#ffffff',
+                            order: 2
+                        },
+                        // 道路数据集 - 仅用于占位，实际由自定义绘制
+                        {
+                            label: '道路',
+                            data: [],
+                            type: 'line',
+                            borderColor: '#9CA3AF',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            fill: false,
+                            order: 0, // 道路在最底层
+                            showLine: false
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        intersect: false,
+                        axis: 'xy'
+                    },
                     scales: {
                         x: {
                             title: {
                                 display: true,
-                                text: 'X坐标'
+                                text: 'X坐标',
+                                font: {
+                                    weight: 'bold'
+                                }
                             },
-                            min: 0,
-                            max: 1000
+                            type: 'linear',
+                            position: 'bottom',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         },
                         y: {
                             title: {
                                 display: true,
-                                text: 'Y坐标'
+                                text: 'Y坐标',
+                                font: {
+                                    weight: 'bold'
+                                }
                             },
-                            min: 0,
-                            max: 1000
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
                         }
                     },
                     plugins: {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const id = context.raw.id;
-                                    const theta = context.raw.theta;
-                                    return `车辆 ID: ${id}, 角度: ${theta.toFixed(1)}°`;
+                                    const datasetIndex = context.datasetIndex;
+                                    const raw = context.raw;
+
+                                    // 节点提示
+                                    if (datasetIndex === 0) {
+                                        return `节点: ${raw.name} (ID: ${raw.id})`;
+                                    }
+                                    // 车辆提示
+                                    else if (datasetIndex === 1) {
+                                        const id = raw.id;
+                                        const theta = raw.theta;
+                                        return `车辆 ID: ${id}, 角度: ${theta.toFixed(1)}°`;
+                                    }
+                                    // 道路提示 - 通过自定义逻辑查找
+                                    else {
+                                        const road = findRoadByCoordinates(raw.x, raw.y);
+                                        return road ? `道路: ${road.name}` : '道路';
+                                    }
                                 }
                             }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
                         }
+                    },
+                    animation: {
+                        duration: 500
                     }
                 }
             });
+
+            // 添加自定义道路绘制插件
+            vehicleChart.register({
+                id: 'roadDrawer',
+                beforeDraw: drawRoads
+            });
+
+            // 加载地图数据
+            loadMapData();
+        }
+
+        // 查找坐标点所属的道路
+        function findRoadByCoordinates(x, y) {
+            // 简化的查找逻辑，实际应用中可能需要更精确的算法
+            const tolerance = 5; // 容差范围
+            for (const edge of roadEdges) {
+                // 检查点是否在道路的容差范围内
+                if (isPointNearLine(x, y, edge.start.x, edge.start.y, edge.end.x, edge.end.y, tolerance)) {
+                    return edge;
+                }
+            }
+            return null;
+        }
+
+        // 检查点是否在直线附近
+        function isPointNearLine(px, py, x1, y1, x2, y2, tolerance) {
+            // 计算点到直线的距离
+            const A = px - x1;
+            const B = py - y1;
+            const C = x2 - x1;
+            const D = y2 - y1;
+
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let param = -1;
+
+            if (lenSq !== 0) param = dot / lenSq;
+
+            let xx, yy;
+
+            if (param < 0) {
+                xx = x1;
+                yy = y1;
+            } else if (param > 1) {
+                xx = x2;
+                yy = y2;
+            } else {
+                xx = x1 + param * C;
+                yy = y1 + param * D;
+            }
+
+            const dx = px - xx;
+            const dy = py - yy;
+
+            return dx * dx + dy * dy <= tolerance * tolerance;
+        }
+
+        // 自定义道路绘制函数
+        function drawRoads(chart) {
+            if (!mapData || roadEdges.length === 0) return;
+
+            const ctx = chart.ctx;
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+
+            // 保存当前上下文状态
+            ctx.save();
+
+            // 绘制每条道路
+            roadEdges.forEach(edge => {
+                // 将数据坐标转换为画布坐标
+                const startX = xAxis.getPixelForValue(edge.start.x);
+                const startY = yAxis.getPixelForValue(edge.start.y);
+                const endX = xAxis.getPixelForValue(edge.end.x);
+                const endY = yAxis.getPixelForValue(edge.end.y);
+
+                // 设置道路样式
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#9CA3AF';
+                ctx.stroke();
+            });
+
+            // 恢复上下文状态
+            ctx.restore();
+        }
+
+        // 加载地图数据
+        async function loadMapData() {
+            try {
+                // 显示加载中状态
+                log('正在加载地图数据...');
+
+                // 尝试从data.json加载数据，如果失败则使用备用数据
+                try {
+                    const response = await fetch('./data.json');
+                    if (!response.ok) throw new Error('数据加载失败');
+                    mapData = await response.json();
+                } catch (error) {
+                    log('使用备用地图数据: ' + error.message, 'warning');
+                    // 提供备用地图数据
+                    mapData = {
+                        "points": [
+                            {"name": "松风涧", "x": 4690, "y": 330, "type": 0},
+                            {"name": "月栖滩", "x": 5360, "y": 770, "type": 0},
+                            {"name": "云岫台", "x": 3280, "y": 1920, "type": 0},
+                            {"name": "花溪渡", "x": 3680, "y": 2090, "type": 0},
+                            {"name": "星垂浦", "x": 4670, "y": 2160, "type": 0},
+                            {"name": "竹影潭", "x": 5670, "y": 2230, "type": 0}
+                        ],
+                        "edges": [
+                            {"name": "店前路", "start_id": 0, "end_id": 1, "limit_speed": 6.94, "degree": 3},
+                            {"name": "和平路", "start_id": 0, "end_id": 2, "limit_speed": 6.94, "degree": 3},
+                            {"name": "幸福街", "start_id": 1, "end_id": 5, "limit_speed": 6.94, "degree": 3},
+                            {"name": "健康巷", "start_id": 2, "end_id": 3, "limit_speed": 6.94, "degree": 3},
+                            {"name": "东风路", "start_id": 3, "end_id": 4, "limit_speed": 6.94, "degree": 3},
+                            {"name": "朝阳街", "start_id": 4, "end_id": 5, "limit_speed": 6.94, "degree": 3}
+                        ]
+                    };
+                }
+
+                // 验证地图数据格式
+                if (!mapData.points || !mapData.edges) {
+                    throw new Error('地图数据格式不正确，缺少points或edges字段');
+                }
+
+                updateMapDrawing();
+                log(`地图数据加载成功，包含 ${mapData.points.length} 个节点和 ${mapData.edges.length} 条道路`);
+                showNotification('地图加载成功', 'success');
+            } catch (error) {
+                log('地图数据加载失败: ' + error.message, 'error');
+                showNotification('地图加载失败: ' + error.message, 'danger');
+            }
+        }
+
+        // 更新地图绘制
+        function updateMapDrawing() {
+            if (!mapData || !vehicleChart) return;
+
+            // 重置道路边缘数组
+            roadEdges = [];
+
+            // 提取所有点的坐标以确定坐标轴范围
+            const allX = mapData.points.map(point => point.x);
+            const allY = mapData.points.map(point => point.y);
+
+            // 计算坐标范围并添加适当的边距
+            const minX = Math.min(...allX);
+            const maxX = Math.max(...allX);
+            const minY = Math.min(...allY);
+            const maxY = Math.max(...allY);
+
+            // 计算范围和边距
+            const rangeX = maxX - minX;
+            const rangeY = maxY - minY;
+            const paddingX = rangeX * PADDING_RATIO;
+            const paddingY = rangeY * PADDING_RATIO;
+
+            // 更新坐标轴范围
+            chartMinX = minX - paddingX;
+            chartMaxX = maxX + paddingX;
+            chartMinY = minY - paddingY;
+            chartMaxY = maxY + paddingY;
+
+            // 更新坐标轴配置
+            vehicleChart.options.scales.x.min = chartMinX;
+            vehicleChart.options.scales.x.max = chartMaxX;
+            vehicleChart.options.scales.y.min = chartMinY;
+            vehicleChart.options.scales.y.max = chartMaxY;
+
+            // 处理节点数据 - 使用索引作为ID
+            const nodeData = mapData.points.map((point, index) => ({
+                x: point.x,
+                y: point.y,
+                id: index,  // 使用索引作为ID
+                name: point.name || `节点${index}`
+            }));
+            vehicleChart.data.datasets[0].data = nodeData;
+
+            // 处理道路数据 - 存储道路信息用于自定义绘制
+            mapData.edges.forEach((edge, index) => {
+                // 使用索引查找对应的起点和终点
+                const startPoint = mapData.points[edge.start_id];
+                const endPoint = mapData.points[edge.end_id];
+
+                if (startPoint && endPoint) {
+                    // 仅添加有效的道路连接
+                    roadEdges.push({
+                        id: index,
+                        name: edge.name || `道路${index + 1}`,
+                        start: { x: startPoint.x, y: startPoint.y },
+                        end: { x: endPoint.x, y: endPoint.y },
+                        startId: edge.start_id,
+                        endId: edge.end_id
+                    });
+                } else {
+                    log(`跳过无效道路: 起点ID ${edge.start_id} 或终点ID ${edge.end_id} 不存在`, 'warning');
+                }
+            });
+
+            // 清除之前的道路数据点
+            vehicleChart.data.datasets[2].data = [];
+
+            // 更新图表
+            vehicleChart.update();
+        }
+
+        // 图表缩放控制
+        function zoomIn() {
+            if (currentZoom > 0.2) {
+                currentZoom -= 0.1;
+                updateChartZoom();
+            }
+        }
+
+        function zoomOut() {
+            if (currentZoom < 1) {
+                currentZoom += 0.1;
+                updateChartZoom();
+            }
+        }
+
+        function zoomFit() {
+            currentZoom = 1;
+            updateChartZoom();
+        }
+
+        function updateChartZoom() {
+            // 计算中心点
+            const centerX = (chartMinX + chartMaxX) / 2;
+            const centerY = (chartMinY + chartMaxY) / 2;
+
+            // 计算新范围
+            const rangeX = (chartMaxX - chartMinX) * currentZoom;
+            const rangeY = (chartMaxY - chartMinY) * currentZoom;
+
+            // 计算新的最值
+            const newMinX = centerX - rangeX / 2;
+            const newMaxX = centerX + rangeX / 2;
+            const newMinY = centerY - rangeY / 2;
+            const newMaxY = centerY + rangeY / 2;
+
+            // 更新坐标轴
+            vehicleChart.options.scales.x.min = newMinX;
+            vehicleChart.options.scales.x.max = newMaxX;
+            vehicleChart.options.scales.y.min = newMinY;
+            vehicleChart.options.scales.y.max = newMaxY;
+            vehicleChart.update();
         }
 
         // 连接到服务器
@@ -362,30 +699,32 @@
                 };
 
                 ws.onerror = function(error) {
-                    log('连接错误: ' + error, 'error');
+                    log('WebSocket错误: ' + error.message, 'error');
                     showNotification('连接错误', 'danger');
                 };
+
             } catch (e) {
-                log('连接失败: ' + e.message, 'error');
-                showNotification('连接失败: ' + e.message, 'danger');
+                log('连接错误: ' + e.message, 'error');
+                showNotification('连接失败', 'danger');
             }
         }
 
         // 断开与服务器的连接
         function disconnectFromServer() {
-            if (ws && isConnected) {
+            if (ws) {
                 ws.close();
-                isConnected = false;
-                isSimulationRunning = false;
-                updateConnectionStatus(false);
-                updateSimulationControl();
+                ws = null;
             }
+            isConnected = false;
+            isSimulationRunning = false;
+            updateConnectionStatus(false);
+            updateSimulationControl();
         }
 
         // 更新连接状态显示
         function updateConnectionStatus(connected) {
             if (connected) {
-                connectionStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-success mr-2 animate-pulse"></span>已连接';
+                connectionStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-success mr-2"></span>已连接';
                 connectionStatus.className = 'flex items-center px-3 py-1.5 rounded-full bg-success/10 text-success text-sm';
                 connectBtn.innerHTML = '<i class="fa fa-disconnect mr-2"></i>断开';
                 connectBtn.className = 'bg-danger hover:bg-danger/90 text-white px-6 py-2 rounded-r-lg transition-all flex items-center';
@@ -479,7 +818,7 @@
             if (Object.keys(cars).length === 0) {
                 vehicleDataEl.innerHTML = `
                     <tr>
-                        <td colspan="4" class="px-4 py-8 text-center text-gray-500">没有车辆数据</td>
+                        <td colspan="4" class="px-6 py-10 text-center text-gray-500">没有车辆数据</td>
                     </tr>
                 `;
                 return;
@@ -492,10 +831,10 @@
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50 transition-colors';
                 row.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap">${id}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">${car.x.toFixed(2)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">${car.y.toFixed(2)}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">${car.theta.toFixed(2)}°</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${car.x.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${car.y.toFixed(2)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${car.theta.toFixed(2)}°</td>
                 `;
                 vehicleDataEl.appendChild(row);
 
@@ -508,8 +847,8 @@
                 });
             }
 
-            // 更新图表
-            vehicleChart.data.datasets[0].data = chartData;
+            // 更新图表中的车辆数据
+            vehicleChart.data.datasets[1].data = chartData;
             vehicleChart.update();
         }
 
@@ -534,13 +873,22 @@
                     typeClass = 'text-red-700 bg-red-50';
                     typeIcon = '<i class="fa fa-exclamation-circle text-red-500 mr-1"></i>';
                     break;
+                case 'warning':
+                    typeClass = 'text-yellow-700 bg-yellow-50';
+                    typeIcon = '<i class="fa fa-exclamation-triangle text-yellow-500 mr-1"></i>';
+                    break;
                 default:
-                    typeClass = 'text-gray-700';
+                    typeClass = 'text-gray-700 bg-gray-50';
                     typeIcon = '<i class="fa fa-info-circle text-gray-500 mr-1"></i>';
             }
 
-            logEntry.className = `mb-2 p-2 rounded ${typeClass} break-words`;
-            logEntry.innerHTML = `<span class="text-xs text-gray-500 mr-2">${timestamp}</span>${typeIcon}${message}`;
+            logEntry.className = `mb-2 p-2 rounded border ${typeClass} text-sm`;
+            logEntry.innerHTML = `<span class="text-gray-500 mr-2">${timestamp}</span>${typeIcon}${message}`;
+
+            // 清空提示信息
+            if (logContainer.querySelector('.text-gray-500.italic')) {
+                logContainer.innerHTML = '';
+            }
 
             logContainer.appendChild(logEntry);
             logContainer.scrollTop = logContainer.scrollHeight;
@@ -586,15 +934,21 @@
         clearLogBtn.addEventListener('click', () => {
             logContainer.innerHTML = '<div class="text-gray-500 italic">日志已清空</div>';
         });
+        zoomInBtn.addEventListener('click', zoomIn);
+        zoomOutBtn.addEventListener('click', zoomOut);
+        zoomFitBtn.addEventListener('click', zoomFit);
+        reloadMapBtn.addEventListener('click', loadMapData);
 
         // 节点表单提交
         nodeForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
             const nodeData = {
-                status: 15, // 状态码2表示节点数据
+                status: 15, // 状态码15表示节点数据
                 message: {
                     id: parseInt(document.getElementById('node-id').value),
+                    x: parseFloat(document.getElementById('node-x').value),
+                    y: parseFloat(document.getElementById('node-y').value)
                 }
             };
 
@@ -606,9 +960,12 @@
             e.preventDefault();
 
             const roadData = {
-                status: 16, // 状态码3表示路段数据
+                status: 16, // 状态码16表示路段数据
                 message: {
                     id: parseInt(document.getElementById('road-id').value),
+                    start_id: parseInt(document.getElementById('start-node').value),
+                    end_id: parseInt(document.getElementById('end-node').value),
+                    length: parseFloat(document.getElementById('road-length').value)
                 }
             };
 

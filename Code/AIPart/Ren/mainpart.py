@@ -1,29 +1,23 @@
 import numpy as np
-import torch
 import matplotlib.pyplot as plt
 import matplotlib
 from io import BytesIO
 from PIL import Image
 import base64
-from flask import Flask, render_template
-from flask_socketio import SocketIO, emit
-import threading
-import time
 
 from Interface.people import PersonBase
-from Ren.csxiaofeng import crowd_evacuation
 from Ren.agents import AgentGroup
 from Ren.obstacles import ObstacleGenerator
 from Ren.config import *
 
 # 配置matplotlib后端和中文显示
 matplotlib.use('Agg')  # 非交互式后端，适合生成图像
-plt.rcParams["font.family"] = ["SimHei"]
+# plt.rcParams["font.family"] = ["SimHei"]
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 
 class Crowd(PersonBase):
-
+    """模拟人群的总体控制器"""
     @staticmethod
     def create_agents(num_agents, obstacle, targets, targets_heat):
         return AgentGroup(num_agents, obstacle, targets, targets_heat)
@@ -95,7 +89,7 @@ class Crowd(PersonBase):
         # self.ax.set_xlim(0.0, self.MAP_SIZE)
         # self.ax.set_ylim(0.0, self.MAP_SIZE)
 
-        # 1. 绘制密度热图（作为底层）
+        # 绘制密度热图（作为底层）
         density_data = self.agents.get_density().cpu().numpy()
         self.density_plot = self.ax.imshow(
             density_data.T,  # 转置以正确显示坐标
@@ -110,12 +104,12 @@ class Crowd(PersonBase):
 
         # 绘制障碍物
         obstacle_x, obstacle_y = np.where(self.obstacle.map_matrix == 1.0)
-        self.ax.scatter(obstacle_x, obstacle_y, c='black', s=10, label='道路/障碍物')
+        self.ax.scatter(obstacle_x, obstacle_y, c='black', s=10, label='road')
 
-        # 标记交点
-        for idx, (x, y) in enumerate(self.obstacle.intersection_points):
-            self.ax.scatter(x, y, c='yellow', s=80, marker='+', label=f'交点 {idx}' if idx == 0 else "")
-            self.ax.text(x + 5.0, y + 5.0, f'ID:{idx}', fontsize=9, color='yellow')
+        # # 标记交点
+        # for idx, (x, y) in enumerate(self.obstacle.intersection_points):
+        #     self.ax.scatter(x, y, c='yellow', s=80, marker='+', label=f'交点 {idx}' if idx == 0 else "")
+        #     self.ax.text(x + 5.0, y + 5.0, f'ID:{idx}', fontsize=9, color='yellow')
 
         # # 绘制所有缺口中心和斥力线段
         # for i, obs in enumerate(self.obstacle.obstacles):
@@ -219,58 +213,43 @@ class Crowd(PersonBase):
         self.agents.birth(x, y, radius, num)
 
     def generate_frame(self, happened: list = None) -> str:
-        """
-        生成当前状态的可视化图像，并返回Base64编码字符串
-        :param frame: 当前帧编号，用于动画效果控制
-        :param happened: 紧急情况列表
-        :return: Base64编码的图像字符串
-        """
-        # 更新智能体显示
-        positions = self.agents.positions.cpu().numpy()
-        self.agents_plot.set_offsets(positions)
+        """生成压缩后的可视化图像Base64编码"""
+        # 更新智能体显示（保持原有逻辑）
+        pos = self.agents.positions.cpu().numpy()
+        self.agents_plot.set_offsets(pos)
+        self.agents_plot.set_sizes(self.agents.sizes.cpu().numpy())
+        self.agents_plot.set_facecolors(self.agents.colors.cpu().numpy())
 
-        # 更新智能体大小
-        agent_sizes = self.agents.sizes.cpu().numpy()
-        self.agents_plot.set_sizes(agent_sizes)
+        # 更新密度热图（保持原有逻辑）
+        density = self.agents.get_density().cpu().numpy()
+        self.density_plot.set_data(density.T)
+        if (current_max := min(density.max(), self.agents.num_agents // 10)) > 0:
+            self.density_plot.set_clim(0, current_max)
 
-        # 更新智能体颜色
-        agent_colors = self.agents.colors.cpu().numpy()
-        self.agents_plot.set_facecolors(agent_colors)
-
-        # 更新密度热图
-        density_data = self.agents.get_density().cpu().numpy()
-        self.density_plot.set_data(density_data.T)
-
-        # 动态调整颜色范围
-        current_max = min(density_data.max(), self.agents.num_agents // 10)
-        if current_max > 0:
-            self.density_plot.set_clim(vmin=0, vmax=current_max)
-
-        # 处理紧急情况显示
+        # 处理紧急情况显示（保持原有逻辑）
         emergency = self.get_emergency(happened)
         if emergency:
-            eme_pos = []
-            eme_sizes = []
-            for (pos, lev) in emergency:
-                eme_pos.append(pos)
-                eme_sizes.append(50.0 + lev * 30.0)
-
-            eme_pos_np = np.array(eme_pos, dtype=np.float32)
-            self.emergency_plot.set_offsets(eme_pos_np)
+            eme_pos, eme_sizes = zip(*[(p, 50 + l * 30) for p, l in emergency])
+            self.emergency_plot.set_offsets(np.array(eme_pos, np.float32))
             self.emergency_plot.set_sizes(eme_sizes)
             self.emergency_plot.set_visible(True)
         else:
             self.emergency_plot.set_visible(False)
 
-        # 将图像保存到内存缓冲区
+        # 压缩核心：降低分辨率+调整质量
         buf = BytesIO()
-        self.fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+        # 1. 降低DPI（从40→30，显著减小尺寸，可根据清晰度需求调整）
+        self.fig.savefig(buf, format='png', bbox_inches='tight', dpi=50)
         buf.seek(0)
 
-        # 转换为Base64编码
+        # 2. 进一步压缩：转换为JPEG（比PNG更小，适合非透明图像）+ 降低质量
         img = Image.open(buf)
+        # 若图像无透明通道，转为RGB（JPEG不支持透明）
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
         img_byte_arr = BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')
+        # 质量参数（1-95，默认75，数值越低压缩率越高）
+        img.save(img_byte_arr, format='JPEG', quality=60)  # 质量60平衡大小和清晰度
 
-        return img_base64
+        # 转换为Base64
+        return base64.b64encode(img_byte_arr.getvalue()).decode('utf-8')

@@ -80,8 +80,8 @@ class CAVLane(Delegation):
 
             else:
                 car.a_x = self.cars[0].a_x
-                car.a_x += self.cav_x(car,self.cars[0],i*10)
-                car.a_x += self.cav_x(car,self.cars[i-1],10)
+                car.a_x += self.cav_x(car,self.cars[0],i*20)
+                car.a_x += self.cav_x(car,self.cars[i-1],20)
 
                 # 收敛判断
                 if abs(car.a_x - self.cars[0].a_x) > 0.5:
@@ -106,8 +106,8 @@ class CAVLane(Delegation):
 
         else:
             obj.a_x = self.cars[0].a_x
-            obj.a_x += self.cav_x(obj, self.cars[0], self.cars.index(obj) * 10)
-            obj.a_x += self.cav_x(obj, self.cars[self.cars.index(obj) - 1], 10)
+            obj.a_x += self.cav_x(obj, self.cars[0], self.cars.index(obj) * 20)
+            obj.a_x += self.cav_x(obj, self.cars[self.cars.index(obj) - 1], 20)
 
 
         # 收敛判断

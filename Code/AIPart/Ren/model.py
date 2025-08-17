@@ -311,7 +311,6 @@ class PPO:
         if os.path.exists(WEIGHTS_PATH):
             try:
                 self.policy.load_state_dict(torch.load(WEIGHTS_PATH, map_location=device, weights_only=True))
-                print(f"成功加载权重文件: {WEIGHTS_PATH}")
                 return True
             except Exception as e:
                 print(f"加载权重文件失败: {e}，将使用新模型")
