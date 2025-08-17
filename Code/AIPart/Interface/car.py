@@ -83,6 +83,9 @@ class Car(RigidBody):
         :return:
         """
         return self.__obj_lane
+    @obj_lane.setter
+    def obj_lane(self, value):
+        self.__obj_lane = value
 
     def lane2py(self,lane):
         """
