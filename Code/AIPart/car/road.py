@@ -17,6 +17,9 @@ from graph.graph import ROAD_WIDTH
 
 
 class CAVLane(Delegation):
+    """
+    比较特殊的委托，支持重复添加，但只会添加一次
+    """
     def __init__(
             self,
             graph:Optional[Interface.GraphBase],
@@ -59,7 +62,7 @@ class CAVLane(Delegation):
 
     def simulate(self,dt:float=0.1,light = False):
         self.convergence = True
-        self.cars.sort(key=lambda car: car.p_x+car.p_y,reverse=True)
+        self.cars.sort(key=lambda car: car.p_x+car.get_lane()*0.01,reverse=True)
 
 
         for i,car in enumerate(self.cars):
@@ -103,10 +106,10 @@ class CAVLane(Delegation):
         if abs(obj.a_x - self.cars[0].a_x) > 0.5:
             self.convergence = False
     def append(self,car:Car):
-        if car not in self.cars: self.cars.append(car)
+        if car not in self.cars: Delegation.append(self,car)
 
-    def delete(self,car:Car):
-        if car in self.cars: self.cars.remove(car)
+    def back(self,car:Car):
+        if car in self.cars: Delegation.back(self,car)
 
 
 class CAVRoad(Road):
@@ -134,8 +137,8 @@ class CAVRoad(Road):
         self.start_y = self.tsf_start.p_y - ROAD_WIDTH/2
 
 
-        # endpoint线性变换到当前道路轴后的x减去路口半径
-        self.stop_line = RigidBody(p_x=self.graph.points[self.end_id].x,p_y=self.graph.points[self.end_id].y).transform(self.graph.road_basic[self.start_id,self.end_id]).p_x-self.graph.corssing_radius[self.end_id]
+        # 停止线，cutlength
+        self.stop_line = self.graph.cut_length[self.start_id,self.end_id]
 
 
         self.to_lane = td.AlignLane(ay=0.6,by=4)
@@ -151,41 +154,71 @@ class CAVRoad(Road):
         self.avoid_a = td.AccAvoidence(k=1,ax=10,bx=0,ay=10,by=0,safe_distance=10)
 
         # 托管给CAVLane调控的对象
-        self.cavs = [CAVLane(graph, self.get_cars(lane), stop_line, lane) for lane in range(3)]
+        self.cavs = [CAVLane(graph, [], self.stop_line, lane) for lane in range(3)]
 
 
         # 变道车辆，仅在初始化和新增车辆时添加
-        self.inchange=[car for car in self.cars if car.get_lane()!=car.obj_lane]
+        # self.inchange=[car for car in self.cars if car.get_lane()!=car.obj_lane]
+        self.inchange=[]
 
-    def append(self,car:Car):
-        if car.obj_lane != car.on_lane():self.inchange.append(car)
-        Delegation.append(self,car)
+
 
     def simulate(self,dt:float=0.1):
+        """
+        此委托，严格符合transfor传入，和back的返回
+        调用子委托时，忽略cars的改动
+        :param dt:
+        :return:
+        """
         for car in self.all_cars:
             car.vector_basis = (self.graph.road_basic[self.start_id,self.end_id])
             car.p_x = car.p_x - self.start_x
             car.p_y = car.p_y - self.start_y
+
+        # 从变道中删除对象
+        for car in self.inchange:
+            # 误差小于允许值，直接忽略抖动，加入直行队列
+            if abs(car.p_y - (car.obj_lane + 0.5) * Car.lane_length) < 0.2:
+                # 从所有lane委托中删除
+                for column in self.cavs:
+                    column.back(car)
+
+                # 添加到自己道路的委托
+                self.cavs[car.get_lane()].append(car)
+                self.inchange.remove(car)
+
+
+        # 向变道中添加对象
+        # 将每个车添加到自己的道路上
+        for car in self.all_cars:
+            if car.obj_lane != car.get_lane():
+                self.inchange.append(car)
+            else:
+                self.cavs[car.get_lane()].append(car)
+
+
 
 
 
         # 添加变道车辆到所有lane托管
         # 三者共同托管
         for car in self.inchange:
+            if car not in self.cars: continue
             for column in self.cavs:
                 column.append(car)
+            self.send(car)
 
 
 
 
 
 
-        # cav计算车辆加速度
+        # cav计算车辆加速度(all car)(保持距离，对齐车道)
         for lane,CAVc in enumerate(self.cavs):
             CAVc.simulate(dt=dt,light = False)
 
 
-        # 计算变道车辆
+        # 计算变道车辆，将会清空车的a_y
         for car in self.inchange:
             self.cavs[car.obj_lane].simulate_one(dt=dt,obj=car)
 
@@ -193,24 +226,16 @@ class CAVRoad(Road):
             car.a_y = (self.to_lane(car,car.obj_lane) < (self.avoid_v.increment(car,self.cars) + self.avoid_a(car,self.cars))).a_y
 
         # 模拟车辆
-        for car in self.cars:
+        for car in self.all_cars:
             car.simulate(dt=dt)
 
 
-        # 从变道中删除对象
-        for car in self.inchange:
-            # 误差小于允许值，直接忽略抖动，加入直行队列
-            if abs(car.p_y-(car.obj_lane+0.5)*Car.lane_length) < 0.2:
-                for column in self.cavs:
-                    column.delete(car)
 
-                self.cavs[car.get_lane()].append(car)
-                self.inchange.remove(car)
 
 
         # 超过停止线，从此托管中移除，并返回父托管
         res = []
-        for car in self.cars:
+        for car in self.all_cars:
             if car.p_x > self.stop_line:
                 res.append(car)
                 self.cars.remove(car)

@@ -66,7 +66,7 @@ class Car(RigidBody):
         super(Car,self).__init__(p_x=x,p_y=y,vector_basis=base)
         self.id=id
         self.v_x = 10
-        self.text = ""
+        self.text = id
 
         # 用于Road
         self.__obj_lane=lane
