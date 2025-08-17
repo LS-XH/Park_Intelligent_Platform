@@ -204,7 +204,7 @@ class RigidBody:
     def a_y(self,a_y):
         self.__acceleration[1,0] = a_y
 
-    def transform(self,obj_ref:np.ndarray=np.array([[0,1],[1,0]])):
+    def transform(self,obj_ref:np.ndarray=np.array([[1,0],[0,1]])):
         """
         对此对象的物理量转移基底向量至直角坐标系，本质为一组线性变换
         :param obj_ref: 转换的目标参考系

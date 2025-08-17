@@ -18,7 +18,9 @@ from Algorithm.bidirectional_dijkstra import bidirectional_dijkstra as find_road
 import Interface
 import car.tendency as td
 from graph import Graph
-from graph.graph import LANE_WIDTH
+from graph.graph import LANE_WIDTH,ROAD_WIDTH
+
+import time
 
 
 class Cars(Delegation,CarsBase):
@@ -84,7 +86,8 @@ class Cars(Delegation,CarsBase):
 
     def simulate(self,dt=0.01):
         # 通过路径，将闲置的车辆添加到对应道路的委托
-        for car in self.cars:
+        for car in self.all_cars:
+            if car not in self.cars:continue
             path = self.path[self.all_cars.index(car)]
             car.obj_lane=self.graph.crossing_turn[path[1],path[0],path[2]]["lane"]
             self.transfer(car,self.road_delegation[path[0],path[1]])
@@ -109,6 +112,7 @@ class Cars(Delegation,CarsBase):
 
                     # 已从end中出来，所以删除start，end将成为下次的start（删除走完的路径部分）
                     del self.path[car_id][0]
+
 
 
 
@@ -145,9 +149,11 @@ class Cars(Delegation,CarsBase):
     def add_car_by_road(self,s_id,e_id,lane,process,destination):
         point = RigidBody(self.graph.points[s_id].x,self.graph.points[s_id].y)
         point.transform(self.graph.road_basic[s_id,e_id])
+        # 相对道路的x，路口点加上长度*进度
         point.p_x += self.graph.length[s_id,e_id] * process
-        point.p_y += (lane+0.5) * LANE_WIDTH
-        self.add_car(car = Car(x=point.p_x,y=point.p_y,base=point.vector_basis),destination=destination,road=[s_id,e_id])
+        # 相对道路的y，路口点减上lane的量
+        point.p_y -= ROAD_WIDTH/2 - (lane+0.5) * LANE_WIDTH
+        self.add_car(car = Car(x=point.p_x,y=point.p_y,base=point.vector_basis,id = str(len(self.all_cars))).transform(),destination=destination,road=[s_id,e_id])
 
     @property
     def car_positions(self):
