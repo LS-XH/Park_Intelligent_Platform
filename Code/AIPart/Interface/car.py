@@ -53,15 +53,12 @@ def crossing_car(default_from_id:int = -1,defult_cross_id:int = -1,default_to_id
 
 
 # @road_car(default_lane = -1)
-@crossing_car(default_from_id = -1,default_to_id = -1)
+# @crossing_car(default_from_id = -1,default_to_id = -1)
 class Car(RigidBody):
     car_length=4
     min_distance=1
     lane_length=3
 
-    from_id:ClassVar[int]
-    cross_id:ClassVar[int]
-    to_id: ClassVar[int]
 
     def __init__(self,lane=0,x=0,y=0,id="",base=None,from_id:int = 0,to_id:int = 0):
         super(Car,self).__init__(p_x=x,p_y=y,vector_basis=base)
@@ -71,13 +68,38 @@ class Car(RigidBody):
 
         # 用于Road
         self.__obj_lane=lane
+        self.__from_id = -1
+        self.__cross_id = -1
+        self.__to_id = -1
 
 
         # 用于Crossing
         self.__from = from_id
         self.__to = to_id
 
+    @property
+    def from_id(self):
+        return self.__from_id
 
+    @from_id.setter
+    def from_id(self, value):
+        self.__from_id = value
+
+    @property
+    def cross_id(self):
+        return self.__cross_id
+
+    @cross_id.setter
+    def cross_id(self, value):
+        self.__cross_id = value
+
+    @property
+    def to_id(self):
+        return self.__to_id
+
+    @to_id.setter
+    def to_id(self, value):
+        self.__to_id = value
     @property
     def obj_lane(self)->int:
         """

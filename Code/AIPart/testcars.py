@@ -1,16 +1,12 @@
-from car.car import Cars
+from car import Cars
 from graph import Graph
-from load_frame import *
+from load_frame import initialize_cars, cars_to_calculate
 
 graph = Graph()
 init_cars = initialize_cars(30)
 init_cars_list = cars_to_calculate(init_cars)
+CARS = Cars(graph, init_cars_list)
 
-
-cars = Cars(graph, init_cars_list)
-
-
-
-for i in range(100):
-    cars.simulate(dt=0.1)
-    print(cars.car_positions)
+for _ in range(1000):
+    CARS.simulate(dt=0.1)
+    print(CARS.car_positions)

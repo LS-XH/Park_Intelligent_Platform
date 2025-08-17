@@ -201,7 +201,9 @@ class CAVRoad(Road):
         for car in self.all_cars:
             if car.obj_lane != car.get_lane():
                 if car not in self.inchange: self.inchange.append(car)
-            self.cavs[car.get_lane()].append(car)
+            lane = car.get_lane()
+            if lane > 2:continue
+            self.cavs[lane].append(car)
 
 
 
