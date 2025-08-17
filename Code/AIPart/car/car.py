@@ -89,6 +89,7 @@ class Cars(Delegation,CarsBase):
         for car in self.all_cars:
             if car not in self.cars:continue
             path = self.path[self.all_cars.index(car)]
+            if len(path)<3:continue
             car.obj_lane=self.graph.crossing_turn[path[1],path[0],path[2]]["lane"]
             self.transfer(car,self.road_delegation[path[0],path[1]])
 
