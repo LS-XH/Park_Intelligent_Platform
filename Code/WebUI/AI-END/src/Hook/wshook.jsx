@@ -1,60 +1,92 @@
-import { useState, useEffect, useRef } from 'react';
-import WebSocketClient from '../websocket';
+import { useState, useEffect } from 'react';
+import getWebSocketClient from '../../util/websocket';
+import { message } from 'antd';
+import '@ant-design/v5-patch-for-react-19';
 
 export const useWebSocket = (url) => {
     const [messages, setMessages] = useState([]);
     const [status, setStatus] = useState('disconnected');
-    const websocketRef = useRef(null);
 
     useEffect(() => {
-        const ws = new WebSocketClient(url);
+        // 获取单例 WebSocket 客户端
+        const ws = getWebSocketClient(url);
 
-        ws.on('open', () => {
+        // 定义事件处理函数
+        const handleMessage = (event) => {
+            try {
+                console.log("接收到消息：", event.data);
+                console.log("总的message", messages);
+
+                const data = JSON.parse(event.data); // 解析新消息
+
+                //监听紧急事件
+                if (data.response.emergency === "")
+                    message.info("出现突发情况");
+
+                setMessages(prev => {
+                    const filteredMessages = prev.filter(msg =>
+                        msg?.status !== data.status
+                    );
+                    return [...filteredMessages, data];
+                });
+            } catch (error) {
+                // 处理非JSON数据
+                setMessages(prev => [...prev, { raw: event.data }]);
+            }
+        };
+
+        const handleOpen = () => {
+            console.log('WebSocket连接已打开');
+
             setStatus('connected');
-        });
+        };
 
-        ws.on('message', (event) => {
-            setMessages(prev => [...prev, event.data]);
-        });
-
-        ws.on('close', () => {
+        const handleClose = () => {
             setStatus('disconnected');
-        });
+        };
 
-        ws.on('error', () => {
+        const handleError = () => {
+            console.log('WebSocket连接发生错误');
             setStatus('error');
-        });
+        };
 
-        // 添加重连尝试事件监听
-        ws.on('maxReconnectAttemptsReached', () => {
+        const handleMaxReconnectAttemptsReached = () => {
             setStatus('reconnect-failed');
-        });
-        // 连接WebSocket服务器
-        ws.connect();
-        websocketRef.current = ws;
+        };
 
+        // 添加事件监听器
+        ws.on('message', handleMessage);//接收到消息会调用这个函数
+        ws.on('open', handleOpen);
+        ws.on('close', handleClose);
+        ws.on('error', handleError);
+        ws.on('maxReconnectAttemptsReached', handleMaxReconnectAttemptsReached);
+
+        // 如果还没有连接，则连接
+        ws.connect();
+
+
+        // 清理函数 - 由于没有 off 方法，我们需要改进处理方式
         return () => {
-            ws.close();
+            // 清空所有事件处理程序
+            ws.eventHandlers = {};
         };
     }, [url]);
 
     const sendMessage = (data) => {
-        if (websocketRef.current) {
-            console.log("发送数据：", data);
-            websocketRef.current.send(data);
-        }
+        const ws = getWebSocketClient(url);
+        console.log("发送数据：", data);
+        ws.send(data);
     };
 
     const clearMessages = () => {
         setMessages([]);
     };
+
     const reconnect = () => {
-        if (websocketRef.current) {
-            // 重置重连尝试次数
-            websocketRef.current.reconnectAttempts = 0;
-            websocketRef.current.shouldReconnect = true;
-            websocketRef.current.connect();
-        }
+        const ws = getWebSocketClient(url);
+        ws.reconnectAttempts = 0;
+        ws.shouldReconnect = true;
+        ws.connect();
     };
 
     return {

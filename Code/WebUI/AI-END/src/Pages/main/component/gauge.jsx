@@ -1,254 +1,195 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
+import { getGaugeConfig } from '../../../Hook/gaugeHook';
+import styles from '../modulecss/gauge.module.css';
+import Light from "./light";
+import { useWebSocketContext } from "../../../Context/wsContext";
 
-const Board = () => {
-    const chartRef = useRef(null);
-    const myChart = useRef(null);
 
+const Gauge = () => {
+    const { messages, status, sendMessage } = useWebSocketContext();
+    const chartRefPeople = useRef(null);
+    const PeopleChart = useRef(null);
+    const chartRefCar = useRef(null);
+    const CarChart = useRef(null);
+    const chartRefCrowding = useRef(null);
+    const CrowdingChart = useRef(null);
+    const [trafficData, setTrafficData] = useState({ people: 0, cars: 0, crowding: 0 });
+
+    // 处理接收到的消息并更新图表
     useEffect(() => {
-        // 初始化图表
-        myChart.current = echarts.init(chartRef.current);
+        const currentMessage = messages.filter(msg => msg.status === 5)
+        if (currentMessage.length === 0) return;
+        setTrafficData(currentMessage[0].response);
+    }, [messages]);
 
-        // 图表配置
-        const option = {
-            series: [{
-                type: 'gauge',
-                center: ['50%', '60%'],
-                startAngle: 200,
-                endAngle: -20,
-                min: 0,
-                max: 220,
-                splitNumber: 11,
-                itemStyle: {
-                    color: '#00d9ff'
-                },
-                progress: {
-                    show: true,
-                    width: 30
-                },
-                pointer: {
-                    show: true,
-                    length: '75%',
-                    width: 5
-                },
-                axisLine: {
-                    lineStyle: {
-                        width: 30,
-                        color: [
-                            [0.4545, '#00d9ff'],
-                            [0.8181, '#302b63'],
-                            [1, '#fc00ff']
-                        ]
+    // 发送消息给服务器
+    useEffect(() => {
+        // setTimeout(() => { 
+        // }, 1000);
+        if (status === 'connected') {
+            sendMessage(
+                JSON.stringify(
+                    {
+                        status: 3,
+                        message: {
+                            id: 1
+                        }
                     }
-                },
-                axisTick: {
-                    distance: -45,
-                    splitNumber: 5,
-                    lineStyle: {
-                        width: 2,
-                        color: '#999'
-                    }
-                },
-                splitLine: {
-                    distance: -52,
-                    length: 14,
-                    lineStyle: {
-                        width: 3,
-                        color: '#999'
-                    }
-                },
-                axisLabel: {
-                    distance: -20,
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    fontSize: 12
-                },
-                anchor: {
-                    show: true,
-                    showAbove: true,
-                    size: 20,
-                    itemStyle: {
-                        borderWidth: 8,
-                        borderColor: '#00d9ff'
-                    }
-                },
-                title: {
-                    show: false
-                },
-                detail: {
-                    valueAnimation: true,
-                    width: '60%',
-                    lineHeight: 40,
-                    borderRadius: 8,
-                    offsetCenter: [0, '10%'],
-                    fontSize: 32,
-                    fontWeight: 'bolder',
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    formatter: '{value} km/h'
-                },
-                data: [{
-                    value: 80
-                }]
-            }],
-            graphic: {
-                elements: [{
-                    type: 'text',
-                    $action: 'replace',
-                    style: {
-                        text: 'SPEED',
-                        fontSize: 24,
-                        fontWeight: 'bold',
-                        lineDash: [0, 200],
-                        lineDashOffset: 0,
-                        fill: 'transparent',
-                        stroke: '#00d9ff',
-                        lineWidth: 1,
-                        opacity: 0.8
-                    },
-                    keyframeAnimation: {
-                        duration: 3000,
-                        loop: true,
-                        keyframes: [
-                            {
-                                percent: 0.7,
-                                style: {
-                                    fill: 'transparent'
-                                }
-                            },
-                            {
-                                percent: 0.8,
-                                style: {
-                                    fill: '#00d9ff'
-                                }
-                            },
-                            {
-                                percent: 1,
-                                style: {
-                                    fill: '#00d9ff'
-                                }
-                            }
-                        ]
-                    }
-                }]
-            }
-        };
+                ));
+            console.log("发送成功");
+        }
+    }, [status]);
 
-        // 设置配置项
-        myChart.current.setOption(option);
 
-        // 模拟速度变化
-        const simulateSpeedChange = () => {
-            setInterval(() => {
-                if (myChart.current) {
-                    const randomValue = Math.round(Math.random() * 200);
-                    myChart.current.setOption({
-                        series: [{
-                            data: [{
-                                value: randomValue
-                            }]
-                        }]
-                    });
-                }
-            }, 3000);
-        };
 
-        simulateSpeedChange();
+    // 统一的 resize 处理函数
+    const handleResize = () => {
+        if (PeopleChart.current) {
+            PeopleChart.current.resize();
+        }
+        if (CarChart.current) {
+            CarChart.current.resize();
+        }
+        if (CrowdingChart.current) {
+            CrowdingChart.current.resize();
+        }
+    };
 
-        // 响应式处理
-        const handleResize = () => {
-            if (myChart.current) {
-                myChart.current.resize();
-            }
-        };
+    // 初始化人流量图表
+    useEffect(() => {
+        if (chartRefPeople.current) {
+            PeopleChart.current = echarts.init(chartRefPeople.current);
+            const option = getGaugeConfig(trafficData.people, 20000, '人流量', '');
+            PeopleChart.current.setOption(option);
+        }
 
+        // 添加 resize 监听器
         window.addEventListener('resize', handleResize);
 
-        // 清理函数
         return () => {
-            window.removeEventListener('resize', handleResize);
-            if (myChart.current) {
-                myChart.current.dispose();
+            if (PeopleChart.current) {
+                PeopleChart.current.dispose();
             }
         };
     }, []);
 
-    return (
-        <div style={{
+    // 初始化车流量图表
+    useEffect(() => {
+        if (chartRefCar.current) {
+            CarChart.current = echarts.init(chartRefCar.current);
+            const option = getGaugeConfig(trafficData.cars, 5000, '车流量', '');
+            CarChart.current.setOption(option);
+        }
 
-            width: '80%',
-            height: '100%',
-            margin: '0 auto',
-            minHeight: '400px',
-            borderRadius: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-        }}>
+        return () => {
+            if (CarChart.current) {
+                CarChart.current.dispose();
+            }
+        };
+    }, []);
+
+    // 初始化拥挤程度图表
+    useEffect(() => {
+        if (chartRefCrowding.current) {
+            CrowdingChart.current = echarts.init(chartRefCrowding.current);
+            const option = getGaugeConfig(trafficData.crowding, 100, '拥挤度', '');
+            CrowdingChart.current.setOption(option);
+        }
+
+        return () => {
+            if (CrowdingChart.current) {
+                CrowdingChart.current.dispose();
+            }
+        };
+    }, []);
+
+    // 统一处理所有图表的数据更新
+    useEffect(() => {
+        // 更新人流量图表数据
+        if (PeopleChart.current) {
+            PeopleChart.current.setOption({
+                series: [{
+                    data: [{
+                        value: trafficData.people
+                    }]
+                }]
+            });
+        }
+
+        // 更新车流量图表数据
+        if (CarChart.current) {
+            CarChart.current.setOption({
+                series: [{
+                    data: [{
+                        value: trafficData.cars
+                    }]
+                }]
+            });
+        }
+
+        // 更新拥挤程度图表数据
+        if (CrowdingChart.current) {
+            CrowdingChart.current.setOption({
+                series: [{
+                    data: [{
+                        value: trafficData.crowding
+                    }]
+                }]
+            });
+        }
+    }, [trafficData]);
+
+    // 清理 resize 监听器
+    useEffect(() => {
+        return () => {
+            window.removeEventListener('resize', handleResize);
+        };
+    }, []);
+
+    return (
+        <div className={styles.container}>
             {/* 添加模糊背景效果元素 */}
-            <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                background: `
-          radial-gradient(circle at 15% 25%, rgba(255, 0, 199, 0.2) 0%, transparent 20%),
-          radial-gradient(circle at 85% 35%, rgba(0, 217, 255, 0.2) 0%, transparent 20%),
-          radial-gradient(circle at 45% 85%, rgba(128, 0, 255, 0.2) 0%, transparent 20%)
-        `,
-                zIndex: 0
-            }} />
+            <div className={styles.background} />
 
             {/* 毛玻璃容器 */}
-            <div style={{
-                width: '100%',
-                minHeight: '400px',
-                background: 'rgba(255, 255, 255, 0.15)',
-                borderRadius: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                position: 'relative',
-                zIndex: 1,
-                padding: '20px'
-            }}>
-                <div
-                    ref={chartRef}
-                    style={{
-                        width: '100%',
-                        height: '400px',
-                        zIndex: 1
-                    }}
-                />
-                <div style={{
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    textAlign: 'center',
-                    zIndex: 1
-                }}>
-                    <h2 style={{
-                        margin: 0,
-                        fontWeight: 300,
-                        fontSize: '1.5rem',
-                        letterSpacing: '1px'
-                    }}>实时速度监控</h2>
-                    <p style={{
-                        margin: '5px 0 0 0',
-                        fontWeight: 200,
-                        fontSize: '0.9rem',
-                        opacity: 0.8
-                    }}>当前速度状态显示</p>
+            <div className={styles.glassContainer}>
+
+
+                <div className={styles.chartContainer}>
+                    <div
+                        ref={chartRefPeople}
+                        className={styles.chart}
+                    />
+                    <div
+                        ref={chartRefCar}
+                        className={styles.chart}
+                    />
+                    <div
+                        ref={chartRefCrowding}
+                        className={styles.chart}
+                    />
+                </div>
+                <Light className={styles.chartlight} currentData={trafficData.trafficLight}></Light>
+                <div className={styles.title}>
+                    <div>
+                        <span className={styles.infoItem}>
+                            <span className={styles.infoLabel}>当前路段:</span>
+                            <span className={styles.infoValue}>
+                                {trafficData?.status === 5 ? (trafficData.name ? trafficData.name : '全路段') : '全路段'}
+                            </span>
+                        </span>
+                        <span className={styles.infoItem}>
+                            <span className={styles.infoLabel}>当前节点:</span>
+                            <span className={styles.infoValue}>
+                                {trafficData?.status === 6 ? (trafficData.name ? trafficData.name : '无选中节点') : '无选中节点'}
+                            </span>
+                        </span>
+                    </div>
                 </div>
             </div>
-
         </div>
     );
 };
 
-export default Board;
+export default Gauge;

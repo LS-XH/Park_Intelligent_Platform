@@ -1,15 +1,35 @@
 import { Form, Input, Button, Space, message } from "antd";
 import { useState, useEffect } from "react";
+import { registerAPI, getCodeAPI } from "../../api/service/registerService";
 // import '@ant-design/v5-patch-for-react-19';
+import { encryptWithAESAndRSA } from "../../../util/entrypt";
+import { jsxs } from "react/jsx-runtime";
 
-const RegisterForm = () => {
+const RegisterForm = ({ onTabChange }) => {
     const [form] = Form.useForm();
     const [countdown, setCountdown] = useState(0);
+
+    //加密公钥
+    const publicKey = `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsQBfHrU7NYVB8l0kmD79ayRbS2Nmu0gOKIg177flG/MiZd5TIYuH+eOINrFFgu6K1jmTqeUDw5Lm2SPofC1fV++V6yhJu8Vveaa0WhFElSrp5F4vsZ34HB7kpZmH6Vp/u9tdohDrXe+cVdO74ILxsw9CLpEpFrFHmgThVSKtNfwCExZeOT5lN6UKgsxp+HIFbhKWF9NMpmeYw5ie10YevN9Fq9x11aeg+ZgKct1GzF9RfOcX0h6Mz4xu45q5bWRQS+djvprBS5tvYOCVZj9KEanltbFFq71PmiQLdkH7imCFtwHPZzK5TAYeknH+raSjlGDMsijs+I8tR8XpuQcXtwIDAQAB
+-----END PUBLIC KEY-----`;
     //注册API
     const handleRegister = async (values) => {
-        const response = await registerAPI(values.email, values.password, values.verificationCode);
+        const { encryptedData, encryptedKey } = encryptWithAESAndRSA(
+            JSON.stringify({
+                users: {
+                    email: values.email,
+                    password: values.password
+                },
+                code: values.code
+            }),
+            publicKey
+        );
+        const response = await registerAPI(encryptedData, encryptedKey);
+
         if (response.status === 200) {
             message.success("注册成功");
+            onTabChange?.('1'); // 切换到登录 tab
         } else {
             message.error("验证码错误");
         }
@@ -24,7 +44,11 @@ const RegisterForm = () => {
             message.error("请输入邮箱");
             return;
         }
-        const response = await getCodeAPI(email);
+        console.log("第一步", email);
+
+        // 使用 encryptWithAESAndRSA 函数加密邮箱
+        const { encryptedData, encryptedKey } = encryptWithAESAndRSA(JSON.stringify({ email: email }), publicKey);
+        const response = await getCodeAPI(encryptedData, encryptedKey);
 
         if (response.status === 200) {
             setCountdown(60);
@@ -102,6 +126,7 @@ const RegisterForm = () => {
                             type="link"
                             onClick={handleGetCode}
                             disabled={countdown > 0}
+                            style={{ color: "#121212" }}
                         >
                             {countdown > 0 ? `(${countdown})秒后重新发送` : '发送验证码'}
                         </Button>
@@ -111,7 +136,7 @@ const RegisterForm = () => {
                 <Form.Item>
                     <Space style={{ width: "100%" }}>
                         <Button type="primary" htmlType="submit" block
-                            style={{ backgroundColor: '#1890ff' }}>
+                            style={{ backgroundColor: '#121212' }}>
                             注册
                         </Button>
                         <Button htmlType="button">

@@ -1,9 +1,16 @@
 import { Tabs, ConfigProvider } from "antd";
 import Loginform from "./loginForm";
 import RegisterForm from "./registerForm";
+import { useState } from "react";
 
 
 const Form = () => {
+
+    const [activeKey, setActiveKey] = useState('1'); // 添加状态管理
+
+    const handleTabChange = (key) => {
+        setActiveKey(key);
+    };
     const items = [
         {
             key: '1',
@@ -13,7 +20,7 @@ const Form = () => {
         {
             key: '2',
             label: `注册`,
-            children: <RegisterForm />,
+            children: <RegisterForm onTabChange={handleTabChange} />,
         },
 
     ]
@@ -35,13 +42,15 @@ const Form = () => {
                 theme={{
                     components: {
                         Tabs: {
-                            colorPrimary: '#1890ff',
-                            inkBarColor: "#1890ff"
+                            colorPrimary: '#121212',
+                            inkBarColor: "#121212"
                         }
                     }
                 }}
             >
                 <Tabs
+                    activeKey={activeKey} // 绑定当前激活的 tab
+                    onChange={handleTabChange} // tab 切换时的回调
                     items={items}
                     centered
                     style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
@@ -51,4 +60,4 @@ const Form = () => {
     );
 };
 
-export default Form;
+export default Form;         
