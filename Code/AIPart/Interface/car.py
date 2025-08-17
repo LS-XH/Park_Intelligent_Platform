@@ -14,6 +14,7 @@ def road_car(default_lane:int = 0):
 
         cls.__obj_lane = default_lane
         cls.obj_lane = obj_lane
+        print(1)
 
         return cls
 
@@ -51,7 +52,7 @@ def crossing_car(default_from_id:int = -1,defult_cross_id:int = -1,default_to_id
     return decorator
 
 
-@road_car(default_lane = -1)
+# @road_car(default_lane = -1)
 @crossing_car(default_from_id = -1,default_to_id = -1)
 class Car(RigidBody):
     car_length=4
@@ -70,6 +71,7 @@ class Car(RigidBody):
 
         # 用于Road
         self.__obj_lane=lane
+
 
         # 用于Crossing
         self.__from = from_id
@@ -152,6 +154,7 @@ class Delegation:
         """
         if car in self.cars:
             self.cars.remove(car)
+        if car in self.all_cars:
             self.all_cars.remove(car)
 
 

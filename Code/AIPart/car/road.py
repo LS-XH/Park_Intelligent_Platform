@@ -12,7 +12,7 @@ import car.tendency as td
 from graph.graph import ROAD_WIDTH
 
 
-
+import time
 
 
 
@@ -86,7 +86,7 @@ class CAVLane(Delegation):
                 # 收敛判断
                 if abs(car.a_x - self.cars[0].a_x) > 0.5:
                     self.convergence = False
-    def simulate_one(self,dt:float=0.1,obj:Car=None):
+    def simulate_one(self,dt:float=0.1,obj:Car=None,light:bool=False):
         self.convergence = True
         self.cars.sort(key=lambda car: car.p_x,reverse=True)
 
@@ -98,9 +98,17 @@ class CAVLane(Delegation):
         # 对齐当前车道
         obj.a_y = self.cav_align(obj, self.lane)
 
-        obj.a_x = self.cars[0].a_x
-        obj.a_x += self.cav_x(obj, self.cars[0], self.cars.index(obj) * 10)
-        obj.a_x += self.cav_x(obj, self.cars[self.cars.index(obj) - 1], 10)
+        if self.cars.index(obj) == 0:
+            if not light:
+                obj.a_x = self.cav_l(obj, self.stop_line)
+            else:
+                obj.a_x = self.cav_l(obj, self.stop_line) + 10
+
+        else:
+            obj.a_x = self.cars[0].a_x
+            obj.a_x += self.cav_x(obj, self.cars[0], self.cars.index(obj) * 10)
+            obj.a_x += self.cav_x(obj, self.cars[self.cars.index(obj) - 1], 10)
+
 
         # 收敛判断
         if abs(obj.a_x - self.cars[0].a_x) > 0.5:
@@ -192,9 +200,9 @@ class CAVRoad(Road):
         # 将每个车添加到自己的道路上
         for car in self.all_cars:
             if car.obj_lane != car.get_lane():
-                self.inchange.append(car)
-            else:
-                self.cavs[car.get_lane()].append(car)
+                if car not in self.inchange: self.inchange.append(car)
+            self.cavs[car.get_lane()].append(car)
+
 
 
 
@@ -215,15 +223,15 @@ class CAVRoad(Road):
 
         # cav计算车辆加速度(all car)(保持距离，对齐车道)
         for lane,CAVc in enumerate(self.cavs):
-            CAVc.simulate(dt=dt,light = False)
+            CAVc.simulate(dt=dt,light = True)
 
 
         # 计算变道车辆，将会清空车的a_y
         for car in self.inchange:
-            self.cavs[car.obj_lane].simulate_one(dt=dt,obj=car)
+            self.cavs[car.obj_lane].simulate_one(dt=dt,obj=car,light=True)
 
             # 抑制y
-            car.a_y = (self.to_lane(car,car.obj_lane) < (self.avoid_v.increment(car,self.cars) + self.avoid_a(car,self.cars))).a_y
+            # car.a_y = (self.to_lane(car,car.obj_lane) < (self.avoid_v.increment(car,self.cars) + self.avoid_a(car,self.cars))).a_y
 
         # 模拟车辆
         for car in self.all_cars:
@@ -238,10 +246,9 @@ class CAVRoad(Road):
         for car in self.all_cars:
             if car.p_x > self.stop_line:
                 res.append(car)
-                self.cars.remove(car)
-                self.inchange.remove(car)
+                if car in self.inchange: self.inchange.remove(car)
                 for column in self.cavs:
-                    column.cars.remove(car)
+                    column.back(car)
 
 
         for car in self.all_cars:
@@ -251,5 +258,6 @@ class CAVRoad(Road):
 
 
 
-
+        for car in res:
+            self.back(car)
         return res

@@ -44,7 +44,7 @@ class Crossing(Delegation):
 
 
 
-    def simulate(self,ds=0.1):
+    def simulate(self,dt=0.01):
         """
 
         :param ds: 步过弧长
@@ -53,22 +53,40 @@ class Crossing(Delegation):
         res = []
         for i,car in enumerate(self.cars):
             circle = self.graph.crossing_turn[self.point_id,car.from_id,car.to_id]
+            # 旋转圆弧圆心
             centre = circle["centre"]
+
+            # 起始向量
             begin = circle["from"]
+            # 终止向量
             end = circle["to"]
 
-            dtheta = ds*self.step_tick[i]/circle["radius"]
+            # 步过时间戳*速度绝对值*dt/半径 = 弧度增量
+            dv = np.linalg.norm(car.velocity.flatten())
+            dtheta = dt*dv*self.step_tick[i]/circle["radius"]
             sin = np.sin(dtheta)
             cos = np.cos(dtheta)
 
-            now = np.array([[cos,-sin],[sin,cos]]) @ begin.reshape((2,1))
+            # 将起始向量begin旋转角
+            now = np.array([[cos,-sin],[sin,cos]]) @ begin.reshape((2,1)).flatten()
 
-            if np.cross(begin,end)*np.cross(now,end)<0:
+
+
+            car.p_x = now[0]+centre[0]
+            car.p_y = now[1]+centre[1]
+            self.step_tick[i] += 1
+
+            # 旋转后不能超过end，超过则为结束此委托，会改变速度方向到与当前弧相同
+            if np.cross(begin, end) * np.cross(now, end) < 0:
+                new_v = self.graph.road_basic[self.point_id,car.to_id][:,0] * dv
+                car.a_x = 0
+                car.a_y = 0
+
+                car.v_x = new_v[0]
+                car.v_y = new_v[1]
+
                 self.send(car)
                 res.append(car)
-
-            car.p_x = now[0,0]
-            car.p_y = now[1,0]
 
 
         return res

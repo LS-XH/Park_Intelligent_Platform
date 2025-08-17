@@ -220,8 +220,5 @@ class RigidBody:
 
 
     def simulate(self, dt: float = 0):
-        self.v_x+= self.a_x * dt
-        self.v_y+= self.a_y * dt
-
-        self.p_x+= self.v_x * dt
-        self.p_y+= self.v_y * dt
+        self.__velocity += self.__acceleration * dt
+        self.__position += self.__velocity * dt
