@@ -602,7 +602,7 @@ class Graph(GraphBase):
         self.__cut_length = np.array(self.__length.copy())
         for start_id,row in enumerate(self.__cut_length):
             for end_id,item in enumerate(row):
-                self.__cut_length[start_id,end_id] -= self.__crossing_radius[start_id] - self.__crossing_radius[end_id]
+                self.__cut_length[start_id,end_id] -= self.__crossing_radius[start_id] + self.__crossing_radius[end_id]
 
         # 初始化turn
         self.__crossing_turn = np.empty((len(self.points), len(self.points),len(self.points)), dtype=dict)
@@ -624,9 +624,12 @@ class Graph(GraphBase):
                     vertical_to = np.array([vector_to[1], -vector_to[0]])/np.linalg.norm(vector_to)
                     vertical_to *= np.cross(vector_to, vertical_to)  # 用于更为逆时针
 
+                    # 方向系数，如果为顺时针，则圆心在下，即叉乘为负，取正值（让点+y）
+                    direction_c = 1 if np.cross(vector_from,vector_to) <0 else -1
+
                     # 在路口上的入节点和出节点（即在路口拐弯的from和to点）
-                    point_s = cross_point.position - self.corssing_radius[cross_id] * vector_from + (lane+0.5) * ROAD_WIDTH * vertical_from
-                    point_e = cross_point.position + self.corssing_radius[cross_id] * vector_to + (lane+0.5) * ROAD_WIDTH * vertical_to
+                    point_s = cross_point.position - self.corssing_radius[cross_id] * vector_from + (lane+0.5) * LANE_WIDTH * vertical_from * direction_c
+                    point_e = cross_point.position + self.corssing_radius[cross_id] * vector_to + (lane+0.5) * LANE_WIDTH * vertical_to * direction_c
 
                     if np.cross(vector_from,vector_to) == 0:
                         centre = (point_s+point_e)/2
@@ -637,6 +640,7 @@ class Graph(GraphBase):
                     radius = np.linalg.norm(centre-point_s)
                     self.__crossing_turn[cross_id,self.point_name2id[from_point.name],self.point_name2id[to_point.name]] = {
                         "centre": centre if centre is not None else None,
+                        "radius":radius,
                         "from":(-vertical_from)*radius,
                         "to":(-vertical_to)*radius,
                         "lane":lane if lane < 3 else 2

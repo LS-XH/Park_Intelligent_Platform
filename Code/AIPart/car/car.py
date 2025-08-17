@@ -109,7 +109,8 @@ class Cars(Delegation,CarsBase):
                     back_car.cross_id = self.path[car_id][1]
                     back_car.to_id = self.path[car_id][2]
 
-                    self.transfer(self.crossing_delegation[self.path[car_id][1]],back_car)
+                    # 直接加入新委托，相当于返回当前委托，再transfer（省去了返回到当前cars再transfer删除的过程）
+                    self.crossing_delegation[self.path[car_id][1]].append(back_car)
 
                     # 已从end中出来，所以删除start，end将成为下次的start（删除走完的路径部分）
                     del self.path[car_id][0]
@@ -160,10 +161,12 @@ class Cars(Delegation,CarsBase):
     def car_positions(self):
         res = []
         for car in self.all_cars:
+            degree = np.degrees(np.arctan(car.v_y/car.v_x if car.v_x!=0 else 0)).item()
+            degree += 360 if degree<0 else 0
             res.append({
                 "x":car.p_x,
                 "y":car.p_y,
-                "theta":np.degrees(np.arctan(car.v_y/car.v_x if car.v_x!=0 else 0)).item()
+                "theta":degree
             })
 
         return res

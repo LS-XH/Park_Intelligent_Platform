@@ -191,7 +191,9 @@ class Cars2(Road):
             stop = self.stop.increment(car)
 
 
-
+            print(car.get_lane())
+            print(car.obj_lane)
+            print()
             if car.get_lane() == car.obj_lane:
                 #三者引起的抑制，让速不让道，仅有x调整
                 avoidence = RigidBody(a_x = avoid.a_x+avoid_v.a_x+avoid_a.a_x)

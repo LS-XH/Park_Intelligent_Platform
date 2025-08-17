@@ -27,16 +27,16 @@ graph = Graph()
 init_cars = initialize_cars(30)
 init_cars_list = cars_to_calculate(init_cars)
 
-# init_cars_list = [
-#
-#     [0, 1, 1, 0.1, 11],
-#
-#     [0, 1, 1, 0.2, 11],
-#
-#     [0, 1, 1, 0.3, 11],
-#
-#     [0, 1, 0, 0.3, 11],
-# ]
+init_cars_list = [
+
+    [0, 1, 1, 0.1, 11],
+
+    [0, 1, 1, 0.2, 11],
+
+    [0, 1, 1, 0.3, 11],
+
+    [0, 1, 0, 0.3, 11],
+]
 
 cars = Cars(graph, init_cars_list)
 
@@ -56,7 +56,7 @@ vectork_a = 1
 #帧速，模拟速度
 #fps * t = frame_speed
 dt = 0.01
-frame_speed = 1
+frame_speed = 10
 
 
 
@@ -91,7 +91,6 @@ for i in range(len(init_cars_list)):
 
 def simulate(frame):
     cars.simulate(dt=dt)
-    print(cars.car_positions)
 
     for i,car in enumerate(cars.all_cars):
         xs[i].append(car.p_x)
