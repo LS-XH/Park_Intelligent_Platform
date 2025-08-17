@@ -85,7 +85,7 @@ class AgentGroup:
             if count > 0:
                 target_pos = self.all_targets[i]
                 # 根据目标热度设置生成半径，热度高的目标周围半径更大
-                radius = 50.0 + self.target_heat[i] * 10
+                radius = target_radius / 2.0 + self.target_heat[i] * 10.0
                 self.birth(target_pos[0], target_pos[1], radius, count.item())
 
         # 初始化密度矩阵

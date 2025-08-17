@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unity应用测试工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        success: '#52C41A',
+                        warning: '#FAAD14',
+                        danger: '#FF4D4F',
+                        dark: '#1D2129',
+                        'dark-light': '#272E3B'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark min-h-screen flex flex-col">
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <i class="fa fa-gamepad text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold text-gray-800">Unity应用测试工具</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="connection-status" class="flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm">
+                    <span class="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>
+                    未连接
+                </div>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                    <i class="fa fa-moon-o text-gray-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 连接控制区域 -->
+        <div class="lg:col-span-3 bg-white rounded-xl p-5 card-shadow card-hover">
+            <h2 class="text-lg font-semibold mb-4 flex items-center">
+                <i class="fa fa-plug text-primary mr-2"></i>服务器连接
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="md:col-span-2">
+                    <label for="server-url" class="block text-sm font-medium text-gray-700 mb-1">服务器地址</label>
+                    <div class="flex">
+                        <input type="text" id="server-url" value="ws://localhost:5567"
+                            class="flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                        <button id="connect-btn" class="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-r-lg transition-all flex items-center">
+                            <i class="fa fa-connectdevelop mr-2"></i>连接
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-end">
+                    <button id="simulation-control" class="w-full bg-secondary hover:bg-secondary/90 text-white px-6 py-2 rounded-lg transition-all flex items-center justify-center" disabled>
+                        <i class="fa fa-play mr-2"></i>启动模拟
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <i class="fa fa-info-circle text-primary text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">连接提示</p>
+                        <p class="text-xs text-gray-500">请先连接服务器再进行操作</p>
+                    </div>
+                </div>
+                <div class="flex items-center p-3 bg-green-50 rounded-lg border border-green-100">
+                    <i class="fa fa-check-circle text-success text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">模拟状态</p>
+                        <p id="simulation-status" class="text-xs text-gray-500">未运行</p>
+                    </div>
+                </div>
+                <div class="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <i class="fa fa-exchange text-purple-500 text-xl mr-3"></i>
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">消息统计</p>
+                        <p id="message-stats" class="text-xs text-gray-500">发送: 0 | 接收: 0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据发送区域 -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- 发送节点数据 -->
+            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-map-marker text-primary mr-2"></i>发送节点数据
+                </h2>
+                <form id="node-form" class="space-y-4">
+                    <div>
+                        <label for="node-id" class="block text-sm font-medium text-gray-700 mb-1">节点ID</label>
+                        <input type="number" id="node-id" min="1" value="1"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <div>
+                        <label for="node-x" class="block text-sm font-medium text-gray-700 mb-1">X坐标</label>
+                        <input type="number" id="node-x" step="0.01" value="100.5"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <div>
+                        <label for="node-y" class="block text-sm font-medium text-gray-700 mb-1">Y坐标</label>
+                        <input type="number" id="node-y" step="0.01" value="200.3"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center">
+                        <i class="fa fa-paper-plane mr-2"></i>发送节点
+                    </button>
+                </form>
+            </div>
+
+            <!-- 发送路段数据 -->
+            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-road text-primary mr-2"></i>发送路段数据
+                </h2>
+                <form id="road-form" class="space-y-4">
+                    <div>
+                        <label for="road-id" class="block text-sm font-medium text-gray-700 mb-1">路段ID</label>
+                        <input type="number" id="road-id" min="1" value="20"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <div>
+                        <label for="start-node" class="block text-sm font-medium text-gray-700 mb-1">起始节点</label>
+                        <input type="number" id="start-node" min="1" value="1"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <div>
+                        <label for="end-node" class="block text-sm font-medium text-gray-700 mb-1">结束节点</label>
+                        <input type="number" id="end-node" min="1" value="2"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <div>
+                        <label for="road-length" class="block text-sm font-medium text-gray-700 mb-1">路段长度</label>
+                        <input type="number" id="road-length" step="0.01" min="0.1" value="150.75"
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                    </div>
+                    <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center">
+                        <i class="fa fa-paper-plane mr-2"></i>发送路段
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 数据接收和日志区域 -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- 车辆数据展示 -->
+            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <i class="fa fa-car text-primary mr-2"></i>车辆模拟数据
+                </h2>
+                <div class="h-64">
+                    <canvas id="vehicle-chart"></canvas>
+                </div>
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">X坐标</th>
+                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Y坐标</th>
+                                <th class="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角度</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vehicle-data" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="4" class="px-4 py-8 text-center text-gray-500">等待接收车辆数据...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 通信日志 -->
+            <div class="bg-white rounded-xl p-5 card-shadow card-hover">
+                <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                    <div class="flex items-center">
+                        <i class="fa fa-history text-primary mr-2"></i>通信日志
+                    </div>
+                    <button id="clear-log" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                        <i class="fa fa-trash-o mr-1"></i>清空
+                    </button>
+                </h2>
+                <div id="log-container" class="h-64 overflow-y-auto p-3 bg-gray-50 rounded-lg text-sm scrollbar-thin">
+                    <div class="text-gray-500 italic">日志将显示在这里...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-white border-t border-gray-200 py-4 mt-6">
+        <div class="container mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>Unity应用测试工具 &copy; 2023</p>
+        </div>
+    </footer>
+
+    <!-- 通知提示 -->
+    <div id="notification" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center z-50"></div>
+
+    <script>
+        // 全局变量
+        let ws;
+        let isConnected = false;
+        let isSimulationRunning = false;
+        let messageStats = { sent: 0, received: 0 };
+        let vehicleChart;
+        let vehicleData = {};
+
+        // DOM元素
+        const connectBtn = document.getElementById('connect-btn');
+        const serverUrlInput = document.getElementById('server-url');
+        const connectionStatus = document.getElementById('connection-status');
+        const simulationControl = document.getElementById('simulation-control');
+        const simulationStatus = document.getElementById('simulation-status');
+        const messageStatsEl = document.getElementById('message-stats');
+        const nodeForm = document.getElementById('node-form');
+        const roadForm = document.getElementById('road-form');
+        const vehicleDataEl = document.getElementById('vehicle-data');
+        const logContainer = document.getElementById('log-container');
+        const clearLogBtn = document.getElementById('clear-log');
+        const notification = document.getElementById('notification');
+        const themeToggle = document.getElementById('theme-toggle');
+
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('vehicle-chart').getContext('2d');
+            vehicleChart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: '车辆位置',
+                        data: [],
+                        backgroundColor: '#165DFF',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'X坐标'
+                            },
+                            min: 0,
+                            max: 1000
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Y坐标'
+                            },
+                            min: 0,
+                            max: 1000
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const id = context.raw.id;
+                                    const theta = context.raw.theta;
+                                    return `车辆 ID: ${id}, 角度: ${theta.toFixed(1)}°`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 连接到服务器
+        function connectToServer() {
+            if (isConnected) {
+                disconnectFromServer();
+                return;
+            }
+
+            const serverUrl = serverUrlInput.value.trim();
+            if (!serverUrl) {
+                showNotification('请输入服务器地址', 'warning');
+                return;
+            }
+
+            try {
+                ws = new WebSocket(serverUrl);
+
+                ws.onopen = function() {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    log('已连接到服务器: ' + serverUrl);
+                    showNotification('连接成功', 'success');
+                };
+
+                ws.onmessage = function(event) {
+                    messageStats.received++;
+                    updateMessageStats();
+
+                    try {
+                        const data = JSON.parse(event.data);
+                        log('接收数据: ' + JSON.stringify(data, null, 2), 'received');
+                        handleReceivedData(data);
+                    } catch (e) {
+                        log('接收原始数据: ' + event.data, 'received');
+                        log('解析数据错误: ' + e.message, 'error');
+                    }
+                };
+
+                ws.onclose = function() {
+                    isConnected = false;
+                    isSimulationRunning = false;
+                    updateConnectionStatus(false);
+                    updateSimulationControl();
+                    log('与服务器的连接已关闭');
+                    showNotification('连接已关闭', 'warning');
+                };
+
+                ws.onerror = function(error) {
+                    log('连接错误: ' + error, 'error');
+                    showNotification('连接错误', 'danger');
+                };
+            } catch (e) {
+                log('连接失败: ' + e.message, 'error');
+                showNotification('连接失败: ' + e.message, 'danger');
+            }
+        }
+
+        // 断开与服务器的连接
+        function disconnectFromServer() {
+            if (ws && isConnected) {
+                ws.close();
+                isConnected = false;
+                isSimulationRunning = false;
+                updateConnectionStatus(false);
+                updateSimulationControl();
+            }
+        }
+
+        // 更新连接状态显示
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-success mr-2 animate-pulse"></span>已连接';
+                connectionStatus.className = 'flex items-center px-3 py-1.5 rounded-full bg-success/10 text-success text-sm';
+                connectBtn.innerHTML = '<i class="fa fa-disconnect mr-2"></i>断开';
+                connectBtn.className = 'bg-danger hover:bg-danger/90 text-white px-6 py-2 rounded-r-lg transition-all flex items-center';
+                simulationControl.disabled = false;
+                nodeForm.querySelector('button').disabled = false;
+                roadForm.querySelector('button').disabled = false;
+            } else {
+                connectionStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400 mr-2"></span>未连接';
+                connectionStatus.className = 'flex items-center px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 text-sm';
+                connectBtn.innerHTML = '<i class="fa fa-connectdevelop mr-2"></i>连接';
+                connectBtn.className = 'bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-r-lg transition-all flex items-center';
+                simulationControl.disabled = true;
+                nodeForm.querySelector('button').disabled = true;
+                roadForm.querySelector('button').disabled = true;
+            }
+        }
+
+        // 切换模拟状态
+        function toggleSimulation() {
+            if (!isConnected) return;
+
+            isSimulationRunning = !isSimulationRunning;
+            updateSimulationControl();
+
+            const message = {
+                status: 8,
+                message: {
+                    process: isSimulationRunning ? "start" : "stop",
+                    time: 30 // 模拟速度
+                }
+            };
+
+            sendMessage(message);
+        }
+
+        // 更新模拟控制按钮
+        function updateSimulationControl() {
+            if (isSimulationRunning) {
+                simulationControl.innerHTML = '<i class="fa fa-stop mr-2"></i>停止模拟';
+                simulationControl.className = 'w-full bg-danger hover:bg-danger/90 text-white px-6 py-2 rounded-lg transition-all flex items-center justify-center';
+                simulationStatus.textContent = '运行中';
+                simulationStatus.className = 'text-xs text-success';
+            } else {
+                simulationControl.innerHTML = '<i class="fa fa-play mr-2"></i>启动模拟';
+                simulationControl.className = 'w-full bg-secondary hover:bg-secondary/90 text-white px-6 py-2 rounded-lg transition-all flex items-center justify-center';
+                simulationStatus.textContent = '未运行';
+                simulationStatus.className = 'text-xs text-gray-500';
+            }
+        }
+
+        // 更新消息统计
+        function updateMessageStats() {
+            messageStatsEl.textContent = `发送: ${messageStats.sent} | 接收: ${messageStats.received}`;
+        }
+
+        // 发送消息到服务器
+        function sendMessage(data) {
+            if (!isConnected || !ws) {
+                showNotification('未连接到服务器', 'warning');
+                return;
+            }
+
+            try {
+                const jsonData = JSON.stringify(data);
+                ws.send(jsonData);
+                messageStats.sent++;
+                updateMessageStats();
+                log('发送数据: ' + jsonData, 'sent');
+                return true;
+            } catch (e) {
+                log('发送数据错误: ' + e.message, 'error');
+                showNotification('发送失败', 'danger');
+                return false;
+            }
+        }
+
+        // 处理接收到的数据
+        function handleReceivedData(data) {
+            // 处理车辆数据
+            if (data) {
+                updateVehicleData(data);
+            }
+        }
+
+        // 更新车辆数据展示
+        function updateVehicleData(cars) {
+            vehicleData = cars;
+
+            // 更新表格
+            vehicleDataEl.innerHTML = '';
+            if (Object.keys(cars).length === 0) {
+                vehicleDataEl.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-500">没有车辆数据</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // 更新图表数据
+            const chartData = [];
+            for (const [id, car] of Object.entries(cars)) {
+                // 添加到表格
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap">${id}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${car.x.toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${car.y.toFixed(2)}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${car.theta.toFixed(2)}°</td>
+                `;
+                vehicleDataEl.appendChild(row);
+
+                // 添加到图表
+                chartData.push({
+                    x: car.x,
+                    y: car.y,
+                    id: id,
+                    theta: car.theta
+                });
+            }
+
+            // 更新图表
+            vehicleChart.data.datasets[0].data = chartData;
+            vehicleChart.update();
+        }
+
+        // 记录日志
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+
+            let typeClass = '';
+            let typeIcon = '';
+
+            switch (type) {
+                case 'sent':
+                    typeClass = 'text-green-700 bg-green-50';
+                    typeIcon = '<i class="fa fa-arrow-up text-green-500 mr-1"></i>';
+                    break;
+                case 'received':
+                    typeClass = 'text-blue-700 bg-blue-50';
+                    typeIcon = '<i class="fa fa-arrow-down text-blue-500 mr-1"></i>';
+                    break;
+                case 'error':
+                    typeClass = 'text-red-700 bg-red-50';
+                    typeIcon = '<i class="fa fa-exclamation-circle text-red-500 mr-1"></i>';
+                    break;
+                default:
+                    typeClass = 'text-gray-700';
+                    typeIcon = '<i class="fa fa-info-circle text-gray-500 mr-1"></i>';
+            }
+
+            logEntry.className = `mb-2 p-2 rounded ${typeClass} break-words`;
+            logEntry.innerHTML = `<span class="text-xs text-gray-500 mr-2">${timestamp}</span>${typeIcon}${message}`;
+
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            let bgColor, textColor, icon;
+
+            switch (type) {
+                case 'success':
+                    bgColor = 'bg-success';
+                    textColor = 'text-white';
+                    icon = '<i class="fa fa-check-circle mr-2"></i>';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-warning';
+                    textColor = 'text-white';
+                    icon = '<i class="fa fa-exclamation-triangle mr-2"></i>';
+                    break;
+                case 'danger':
+                    bgColor = 'bg-danger';
+                    textColor = 'text-white';
+                    icon = '<i class="fa fa-times-circle mr-2"></i>';
+                    break;
+                default:
+                    bgColor = 'bg-primary';
+                    textColor = 'text-white';
+                    icon = '<i class="fa fa-info-circle mr-2"></i>';
+            }
+
+            notification.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg transform translate-y-0 opacity-100 transition-all duration-300 flex items-center z-50 ${bgColor} ${textColor}`;
+            notification.innerHTML = `${icon}${message}`;
+
+            setTimeout(() => {
+                notification.className = 'fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center z-50';
+            }, 3000);
+        }
+
+        // 事件监听
+        connectBtn.addEventListener('click', connectToServer);
+        simulationControl.addEventListener('click', toggleSimulation);
+        clearLogBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '<div class="text-gray-500 italic">日志已清空</div>';
+        });
+
+        // 节点表单提交
+        nodeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const nodeData = {
+                status: 15, // 状态码2表示节点数据
+                message: {
+                    id: parseInt(document.getElementById('node-id').value),
+                }
+            };
+
+            sendMessage(nodeData);
+        });
+
+        // 路段表单提交
+        roadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const roadData = {
+                status: 16, // 状态码3表示路段数据
+                message: {
+                    id: parseInt(document.getElementById('road-id').value),
+                }
+            };
+
+            sendMessage(roadData);
+        });
+
+        // 主题切换
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('bg-gray-900');
+            document.body.classList.toggle('text-white');
+            document.body.classList.toggle('bg-gray-50');
+            document.body.classList.toggle('text-dark');
+
+            const icon = themeToggle.querySelector('i');
+            if (icon.classList.contains('fa-moon-o')) {
+                icon.classList.replace('fa-moon-o', 'fa-sun-o');
+                icon.classList.add('text-yellow-400');
+            } else {
+                icon.classList.replace('fa-sun-o', 'fa-moon-o');
+                icon.classList.remove('text-yellow-400');
+            }
+        });
+
+        // 初始化
+        window.addEventListener('load', function() {
+            initChart();
+            updateConnectionStatus(false);
+            updateSimulationControl();
+        });
+    </script>
+</body>
+</html>

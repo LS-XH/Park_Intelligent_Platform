@@ -12,6 +12,7 @@
 
 import logging
 import socket
+from logging.handlers import RotatingFileHandler
 
 
 def setup_logging():
@@ -25,7 +26,19 @@ def setup_logging():
         datefmt=date_format
     )
 
-    return logging.getLogger(__name__)
+    file_handler = RotatingFileHandler(
+        './AIServer/ServerLog/app.log',
+        maxBytes=1024 * 1024 * 5,  # 5MB
+        backupCount=5,
+        encoding='utf-8'
+    )
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(logging.Formatter(log_format))
+
+    logger = logging.getLogger(__name__)
+    logger.addHandler(file_handler)
+
+    return logger
 
 
 def get_local_ip():

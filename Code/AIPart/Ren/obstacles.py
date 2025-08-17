@@ -5,7 +5,7 @@ from Ren.config import PRECISION, device
 
 
 class Obstacle:
-    """障碍物类，优化边界信息存储"""
+    """障碍物类"""
 
     def __init__(self, start_point, end_point, width, gap_offset_ratio=1.0):
         # 转换为float
@@ -67,7 +67,7 @@ class Obstacle:
 
 
 class ObstacleGenerator:
-    """障碍物生成器，优化障碍物数据结构"""
+    """障碍物生成器"""
 
     def __init__(self, map_size, points):
         self.map_size = float(map_size)
@@ -207,6 +207,7 @@ class ObstacleGenerator:
             self.obstacle_boundaries = torch.zeros((0, 2), device=device, dtype=torch.float32)
 
     def find_intersection(self, obstacle1, obstacle2):
+        """搜索交点"""
         line1 = obstacle1.base_line
         line2 = obstacle2.base_line
         line1_set = set((round(x, 2), round(y, 2)) for x, y in line1)

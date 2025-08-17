@@ -3,6 +3,9 @@ import math
 import random
 
 import numpy as np
+import subprocess
+import os
+import platform
 
 
 # random.seed(42)
@@ -90,7 +93,9 @@ def initialize_cars(num_cars):
 
     for i in range(first_generate_num_cars):
         random_destination_id = random.randint(0, len(points_data) - 1)
-        cars.append([random_point_id, random_point_neighbor, random.choice([0, 1, 2]), random_percent[i], random_destination_id])
+        x = start_x + (end_x - start_x) * random_percent[i]
+        y = start_y + (end_y - start_y) * random_percent[i]
+        cars.append([random_point_id, random_point_neighbor, random.choice([0, 1, 2]), random_percent[i], random_destination_id, x, y, start_theta])
 
     # 随机生成其他车辆
     other_generate_num_cars = num_cars - first_generate_num_cars
@@ -109,7 +114,7 @@ def initialize_cars(num_cars):
         car_y = start_y + (end_y - start_y) * random_percent
         random_destination_id = random.randint(0, len(points_data) - 1)
 
-        cars.append([random_start_id, random_end_id, random.choice([0, 1, 2]), random_percent, random_destination_id])
+        cars.append([random_start_id, random_end_id, random.choice([0, 1, 2]), random_percent, random_destination_id, car_x, car_y, theta])
 
     return cars
 
@@ -121,11 +126,58 @@ def cars_to_calculate(cars):
 def cars_to_unity(cars):
     return {
         i: {
-            "x": sublist[0],
-            "y": sublist[1],
-            "theta": sublist[2]
+            "x": sublist[5],
+            "y": sublist[6],
+            "theta": sublist[7]
         } for i, sublist in enumerate(cars)
     }
+
+
+def run_npm_command(project_path, command):
+    try:
+        if not os.path.exists(project_path):
+            print(f"错误: 项目目录不存在 - {project_path}")
+            return
+
+        package_json_path = os.path.join(project_path, "package.json")
+        if not os.path.exists(package_json_path):
+            print(f"错误: 未在目录中找到package.json - {project_path}")
+            return
+
+        if platform.system() == "Windows":
+            cmd = ["cmd", "/c", "npm", *command.split()]
+        else:
+            cmd = ["npm", *command.split()]
+
+        print(f"在 {project_path} 中执行命令: {' '.join(cmd)}")
+
+        process = subprocess.Popen(
+            cmd,
+            cwd=project_path,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+
+        stderr = process.stderr.read()
+        if stderr:
+            print(f"命令执行错误:\n{stderr}")
+
+        return_code = process.poll()
+        if return_code == 0:
+            print(f"命令 '{command}' 执行成功")
+        else:
+            print(f"命令 '{command}' 执行失败，返回码: {return_code}")
+
+    except Exception as e:
+        print(f"执行命令时发生错误: {str(e)}")
 
 
 if __name__ == '__main__':

@@ -1,0 +1,13 @@
+joblib
+numpy~=2.0.2
+torch~=2.8.0
+sympy~=1.14.0
+torch-geometric~=2.6.1
+matplotlib~=3.9.4
+shtab~=1.7.2
+pillow~=11.3.0
+Flask~=3.1.1
+Flask-SocketIO~=5.5.1
+websockets~=15.0.1
+watchdog~=6.0.0
+tqdm~=4.67.1
